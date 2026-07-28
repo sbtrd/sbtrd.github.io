@@ -46,6 +46,41 @@
   font: inherit;
 }
 
+
+/* V1.40 — Commandes dans le menu */
+.ch-order-launch { display: none !important; }
+.ch-orders-nav-item {
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  padding: 11px 14px 11px 18px;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+}
+.ch-orders-nav-item:hover {
+  background: rgba(255,255,255,.06);
+  color: #fff;
+}
+.ch-orders-mobile-option {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.055);
+  color: #e5e7eb;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+}
+
 </style>
 </head>
 <body>
@@ -242,6 +277,59 @@ Error generating stack: `+e.message+`
     simplifyMapModal();
     decorateWeek();
   }, 700);
+})();
+</script>
+<script>
+(() => {
+  const openOrders = () => {
+    const hiddenLaunch = document.querySelector('.ch-order-launch');
+    if (hiddenLaunch) hiddenLaunch.click();
+  };
+
+  const injectDesktop = () => {
+    const nav = document.querySelector('.sidebar-nav');
+    if (!nav || nav.querySelector('.ch-orders-nav-item')) return;
+
+    const button = document.createElement('button');
+    button.className = 'ch-orders-nav-item';
+    button.type = 'button';
+    button.textContent = 'Commandes';
+    button.addEventListener('click', openOrders);
+
+    const artisansButton = [...nav.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Artisans');
+    if (artisansButton) nav.insertBefore(button, artisansButton);
+    else nav.appendChild(button);
+  };
+
+  const injectMobile = () => {
+    const lists = document.querySelectorAll('.mobile-tab-list');
+    lists.forEach((list) => {
+      if (list.querySelector('.ch-orders-mobile-option')) return;
+      const button = document.createElement('button');
+      button.className = 'ch-orders-mobile-option';
+      button.type = 'button';
+      button.textContent = 'Commandes';
+      button.addEventListener('click', () => {
+        openOrders();
+        const current = document.querySelector('.mobile-tab-current');
+        if (current?.getAttribute('aria-expanded') === 'true') current.click();
+      });
+
+      const artisansButton = [...list.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Artisans');
+      if (artisansButton) list.insertBefore(button, artisansButton);
+      else list.appendChild(button);
+    });
+  };
+
+  const run = () => {
+    injectDesktop();
+    injectMobile();
+  };
+
+  const observer = new MutationObserver(run);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  run();
+  window.setInterval(run, 1000);
 })();
 </script>
 </body>
