@@ -27,6 +27,25 @@
 .ch-order-note{margin:12px 0 0;color:#6b7280;font-size:12px}
 @media(max-width:860px){.ch-order-launch{right:12px;bottom:86px}.ch-order-grid{grid-template-columns:1fr}.ch-order-grid .full{grid-column:auto}.ch-order-modal{padding:16px}}
 
+
+/* V1.39 — MAP simplifié */
+.ch-map-time-field {
+  display: grid;
+  gap: 6px;
+}
+.ch-map-time-field span {
+  font-size: 12px;
+  font-weight: 800;
+}
+.ch-map-time-field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #dfe3e8;
+  border-radius: 10px;
+  font: inherit;
+}
+
 </style>
 </head>
 <body>
@@ -119,6 +138,110 @@ Error generating stack: `+e.message+`
       }catch(e){note.textContent='Erreur : '+e.message}
     };
   }
+})();
+</script>
+<script>
+(() => {
+  const KEY = 'conduct-home-map-times-v1';
+
+  const getTimes = () => {
+    try { return JSON.parse(localStorage.getItem(KEY) || '{}') } catch { return {} }
+  };
+
+  const saveTime = (projectName, value) => {
+    const times = getTimes();
+    times[projectName] = value;
+    localStorage.setItem(KEY, JSON.stringify(times));
+    decorateWeek();
+  };
+
+  const getModalTitle = (modal) => {
+    const candidates = [...modal.querySelectorAll('h1,h2,h3,strong')];
+    return candidates.map((el) => el.textContent || '').find((text) => text.includes('— MAP')) || '';
+  };
+
+  const simplifyMapModal = () => {
+    const modals = [...document.querySelectorAll('.modal-card,.modal-content,[role="dialog"]')];
+    for (const modal of modals) {
+      if (modal.dataset.mapSimplified === '1') continue;
+      const title = getModalTitle(modal);
+      if (!title) continue;
+
+      modal.dataset.mapSimplified = '1';
+      const projectName = title.split('— MAP')[0].trim();
+      const labels = [...modal.querySelectorAll('label')];
+
+      let plannedDateLabel;
+      let statusLabel;
+      let noteLabel;
+
+      for (const label of labels) {
+        const text = (label.textContent || '').trim();
+        if (text.includes("Date d’intervention prévue")) plannedDateLabel = label;
+        else if (text.includes("Statut de l'étape")) statusLabel = label;
+        else if (text.includes("Note pour cette étape")) noteLabel = label;
+      }
+
+      for (const label of labels) {
+        if (label !== plannedDateLabel && label !== statusLabel && label !== noteLabel) {
+          label.style.display = 'none';
+        }
+      }
+
+      if (plannedDateLabel) {
+        const span = plannedDateLabel.querySelector('span');
+        if (span) span.textContent = 'Date';
+      }
+
+      if (statusLabel) {
+        const span = statusLabel.querySelector('span');
+        if (span) span.textContent = 'Statut';
+      }
+
+      if (noteLabel) {
+        const span = noteLabel.querySelector('span');
+        if (span) span.textContent = 'Note';
+      }
+
+      const form = modal.querySelector('.lot-editor-form,.form-grid');
+      if (form && !form.querySelector('.ch-map-time-field')) {
+        const field = document.createElement('label');
+        field.className = 'ch-map-time-field';
+        const times = getTimes();
+        field.innerHTML = `<span>Heure</span><input type="time" value="${times[projectName] || ''}">`;
+        const input = field.querySelector('input');
+        input.addEventListener('input', () => saveTime(projectName, input.value));
+        if (plannedDateLabel) plannedDateLabel.insertAdjacentElement('afterend', field);
+        else form.prepend(field);
+      }
+    }
+  };
+
+  const decorateWeek = () => {
+    const times = getTimes();
+    const items = [...document.querySelectorAll('.week-item.intervention')];
+    for (const item of items) {
+      const strong = item.querySelector('strong');
+      const small = item.querySelector('small');
+      if (!strong || !small) continue;
+      const projectName = (strong.textContent || '').trim();
+      const base = (small.textContent || '').replace(/^\d{2}:\d{2}\s·\s/, '');
+      if (base.trim() !== 'MAP') continue;
+      const time = times[projectName];
+      small.textContent = time ? `${time} · MAP` : 'MAP';
+    }
+  };
+
+  const observer = new MutationObserver(() => {
+    simplifyMapModal();
+    decorateWeek();
+  });
+
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  window.setInterval(() => {
+    simplifyMapModal();
+    decorateWeek();
+  }, 700);
 })();
 </script>
 </body>
