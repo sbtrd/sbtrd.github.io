@@ -81,6 +81,223 @@
   text-align: left;
 }
 
+
+/* V1.41 — onglet Commandes aligné sur les autres */
+.ch-orders-nav-item {
+  min-height: 42px !important;
+  padding: 0 14px !important;
+  border-radius: 10px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+}
+.ch-orders-mobile-option {
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+
+/* =========================================================
+   V1.42 — Commandes homogène + partage des chantiers
+   ========================================================= */
+.sidebar-nav .nav-item,
+.sidebar-nav .ch-orders-nav-item {
+  width: 100% !important;
+  min-height: auto !important;
+  padding: 11px 12px !important;
+  gap: 12px !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+}
+
+.sidebar-nav .ch-orders-nav-item {
+  display: flex !important;
+  align-items: center !important;
+  color: #cbd5e1 !important;
+  background: transparent !important;
+}
+
+.sidebar-nav .ch-orders-nav-item:hover {
+  background: rgba(255,255,255,.06) !important;
+  color: #fff !important;
+}
+
+.ch-share-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(17,24,39,.66);
+}
+
+.ch-share-modal {
+  width: min(720px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  padding: 22px;
+  border-radius: 20px;
+  background: #fff;
+  color: #20242a;
+  box-shadow: 0 28px 80px rgba(0,0,0,.32);
+  font-family: inherit;
+}
+
+.ch-share-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.ch-share-head h2 {
+  margin: 3px 0 0;
+  font-size: 23px;
+}
+
+.ch-share-head small {
+  color: #8b94a1;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.ch-share-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: #f1f3f5;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.ch-share-content {
+  display: grid;
+  gap: 14px;
+}
+
+.ch-share-intro {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 13px;
+  background: #f7f8fa;
+}
+
+.ch-share-intro span,
+.ch-share-warning,
+.ch-share-status {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ch-share-content label {
+  display: grid;
+  gap: 7px;
+}
+
+.ch-share-content label > span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ch-share-content input,
+.ch-share-content textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #dfe3e8;
+  border-radius: 11px;
+  font: inherit;
+}
+
+.ch-share-warning {
+  margin: 0;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.ch-share-status {
+  margin: 0;
+  color: #166534;
+}
+
+.ch-share-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.ch-share-actions button {
+  min-height: 42px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ch-share-secondary {
+  background: #eef1f4;
+  color: #30343a;
+}
+
+.ch-share-primary {
+  background: #c51a2e;
+  color: #fff;
+}
+
+.ch-share-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ch-share-summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 11px;
+}
+
+.ch-share-summary span {
+  color: #727782;
+  font-size: 11px;
+}
+
+@media(max-width:620px) {
+  .ch-share-modal {
+    padding: 16px;
+  }
+
+  .ch-share-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ch-share-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -330,6 +547,534 @@ Error generating stack: `+e.message+`
   observer.observe(document.documentElement, { childList: true, subtree: true });
   run();
   window.setInterval(run, 1000);
+})();
+</script>
+<script>
+(() => {
+  const FILE_DB_NAME = 'conduct-home-files-v1.2-clean';
+  const FILE_STORE_NAME = 'files';
+  const CONVENTIONS_KEY = 'conduct-home-order-conventions-v1';
+
+  const findWorkspace = () => {
+    const keys = Object.keys(localStorage).filter((key) => key.startsWith('conduct-home-workspace-v1.2-clean'));
+    for (const key of keys) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || '');
+        if (value && Array.isArray(value.projects)) return value;
+      } catch {}
+    }
+    return { projects: [], artisans: [], documents: [] };
+  };
+
+  const openDb = () => new Promise((resolve, reject) => {
+    const request = indexedDB.open(FILE_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(FILE_STORE_NAME)) {
+        request.result.createObjectStore(FILE_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Stockage local inaccessible.'));
+  });
+
+  const readBlob = async (id) => {
+    const db = await openDb();
+    const blob = await new Promise((resolve, reject) => {
+      const tx = db.transaction(FILE_STORE_NAME, 'readonly');
+      const request = tx.objectStore(FILE_STORE_NAME).get(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('Lecture du fichier impossible.'));
+    });
+    db.close();
+    return blob;
+  };
+
+  const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(reader.error || new Error('Lecture du fichier impossible.'));
+    reader.readAsDataURL(blob);
+  });
+
+  const download = (blob, name) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  };
+
+  const getConventions = () => {
+    try { return JSON.parse(localStorage.getItem(CONVENTIONS_KEY) || '{}'); }
+    catch { return {}; }
+  };
+
+  const createOutlookFile = async () => {
+    const projectSelect = document.querySelector('#cho-project');
+    const artisanSelect = document.querySelector('#cho-artisan');
+    const emailInput = document.querySelector('#cho-email');
+    const subjectInput = document.querySelector('#cho-subject');
+    const bodyInput = document.querySelector('#cho-body');
+    const documentList = document.querySelector('#cho-doc-list');
+    const note = document.querySelector('#cho-note');
+
+    if (!projectSelect || !artisanSelect || !emailInput || !subjectInput || !bodyInput || !documentList) return;
+
+    const workspace = findWorkspace();
+    const project = (workspace.projects || []).find((item) => item.id === projectSelect.value);
+    const artisan = (workspace.artisans || []).find((item) => item.id === artisanSelect.value);
+    const email = String(artisan?.orderEmail || artisan?.email || emailInput.value || '').trim();
+
+    if (!project) {
+      if (note) note.textContent = 'Choisis un chantier.';
+      return;
+    }
+    if (!artisan) {
+      if (note) note.textContent = 'Choisis un artisan.';
+      return;
+    }
+    if (!email) {
+      if (note) note.textContent = "Aucune adresse e-mail n'est renseignée dans la fiche de l'artisan.";
+      return;
+    }
+
+    emailInput.value = email;
+    const subject = String(subjectInput.value || `Commandes — Chantier ${project.name}`).replace(/^Commande —/, 'Commandes —');
+    subjectInput.value = subject;
+
+    let body = String(bodyInput.value || '');
+    body = body.replace(/\n*Merci de me confirmer la bonne réception de cette commande\.\n*/g, '\n');
+    bodyInput.value = body;
+
+    if (note) note.textContent = 'Création du brouillon Outlook…';
+
+    try {
+      const selectedIds = [...documentList.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+      const selectedDocuments = (workspace.documents || []).filter((document) =>
+        document.projectId === project.id && selectedIds.includes(document.id)
+      );
+
+      const attachments = [];
+      for (const document of selectedDocuments) {
+        if (!document.localFileId) continue;
+        const blob = await readBlob(document.localFileId);
+        if (blob) {
+          attachments.push({
+            blob,
+            name: document.name,
+            type: document.mimeType || blob.type || 'application/octet-stream',
+          });
+        }
+      }
+
+      const convention = getConventions()[artisan.id];
+      if (convention?.id) {
+        const blob = await readBlob(convention.id);
+        if (blob) {
+          attachments.push({
+            blob,
+            name: convention.name || 'Convention.pdf',
+            type: convention.type || blob.type || 'application/octet-stream',
+          });
+        }
+      }
+
+      const boundary = `----ConductHome-${Date.now()}`;
+      let eml = [
+        `To: ${email.replace(/[\r\n]+/g, ' ')}`,
+        `Subject: ${subject.replace(/[\r\n]+/g, ' ')}`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        body,
+        '',
+      ].join('\r\n');
+
+      for (const attachment of attachments) {
+        const encoded = await blobToBase64(attachment.blob);
+        const safeName = String(attachment.name || 'document').replace(/"/g, '');
+        eml += [
+          `--${boundary}`,
+          `Content-Type: ${attachment.type}; name="${safeName}"`,
+          `Content-Disposition: attachment; filename="${safeName}"`,
+          'Content-Transfer-Encoding: base64',
+          '',
+          (encoded.match(/.{1,76}/g) || []).join('\r\n'),
+          '',
+        ].join('\r\n');
+      }
+
+      eml += `--${boundary}--\r\n`;
+      const safeFileName = subject.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Commandes';
+      download(new Blob([eml], { type: 'message/rfc822' }), `${safeFileName}.eml`);
+
+      if (note) {
+        note.textContent = "Le brouillon Outlook a été créé avec l'adresse de l'artisan et les pièces jointes. Ouvre le fichier .eml.";
+      }
+    } catch (error) {
+      if (note) note.textContent = `Erreur : ${error instanceof Error ? error.message : 'création impossible'}`;
+    }
+  };
+
+  const patchModal = () => {
+    const projectSelect = document.querySelector('#cho-project');
+    const artisanSelect = document.querySelector('#cho-artisan');
+    const emailInput = document.querySelector('#cho-email');
+    const subjectInput = document.querySelector('#cho-subject');
+    const bodyInput = document.querySelector('#cho-body');
+    const sendButton = document.querySelector('#cho-eml');
+
+    if (!projectSelect || !artisanSelect || !emailInput || !subjectInput || !bodyInput || !sendButton) return;
+    if (sendButton.dataset.v141 === '1') return;
+    sendButton.dataset.v141 = '1';
+    sendButton.textContent = 'Créer le brouillon Outlook';
+
+    const refreshEmail = () => {
+      const workspace = findWorkspace();
+      const artisan = (workspace.artisans || []).find((item) => item.id === artisanSelect.value);
+      emailInput.value = artisan?.orderEmail || artisan?.email || '';
+    };
+
+    const refreshText = () => {
+      const workspace = findWorkspace();
+      const project = (workspace.projects || []).find((item) => item.id === projectSelect.value);
+      if (!project) return;
+      subjectInput.value = `Commandes — Chantier ${project.name}`;
+      bodyInput.value = `Bonjour,\n\nVeuillez trouver ci-joint les éléments relatifs au chantier ${project.name}${project.city ? ` à ${project.city}` : ''}.\n\nCordialement,`;
+    };
+
+    artisanSelect.addEventListener('change', refreshEmail);
+    projectSelect.addEventListener('change', refreshText);
+    refreshEmail();
+
+    subjectInput.value = subjectInput.value.replace(/^Commande —/, 'Commandes —');
+    bodyInput.value = bodyInput.value.replace(/\n*Merci de me confirmer la bonne réception de cette commande\.\n*/g, '\n');
+
+    sendButton.onclick = (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void createOutlookFile();
+    };
+  };
+
+  const observer = new MutationObserver(patchModal);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  patchModal();
+  setInterval(patchModal, 700);
+})();
+</script>
+<script>
+(() => {
+  const SHARE_PREFIX = '#conducthome-share=';
+  const SESSION_KEY = 'conduct-home-firebase-rest-session-v1';
+  const FIREBASE_PROJECT_ID = 'arlogis-conduc-home';
+  let importModalShown = false;
+
+  const getWorkspaceEntry = () => {
+    const keys = Object.keys(localStorage).filter((key) => key.startsWith('conduct-home-workspace-v1.2-clean'));
+    for (const key of keys) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || '');
+        if (value && Array.isArray(value.projects)) return { key, value };
+      } catch {}
+    }
+    return undefined;
+  };
+
+  const getSession = () => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+    catch { return undefined; }
+  };
+
+  const toBase64Url = (value) => {
+    const bytes = new TextEncoder().encode(value);
+    let binary = '';
+    for (let index = 0; index < bytes.length; index += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  };
+
+  const fromBase64Url = (value) => {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(padded);
+    return new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0)));
+  };
+
+  const createShareLink = (project) => {
+    const session = getSession();
+    const payload = {
+      version: 1,
+      sharedAt: new Date().toISOString(),
+      sharedBy: session?.email || undefined,
+      project,
+    };
+    return `${location.origin}${location.pathname}${SHARE_PREFIX}${toBase64Url(JSON.stringify(payload))}`;
+  };
+
+  const createBackdrop = (content) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ch-share-backdrop';
+    backdrop.innerHTML = content;
+    document.body.appendChild(backdrop);
+    const close = () => backdrop.remove();
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) close();
+    });
+    backdrop.querySelector('.ch-share-close')?.addEventListener('click', close);
+    return { backdrop, close };
+  };
+
+  const findSelectedProject = () => {
+    const workspace = getWorkspaceEntry()?.value;
+    if (!workspace) return undefined;
+    const title = document.querySelector('.project-detail-hero h2')?.textContent?.trim();
+    if (!title) return undefined;
+    const cityText = document.querySelector('.project-detail-hero p')?.textContent || '';
+    return (workspace.projects || []).find((project) =>
+      project.name === title && (!project.city || cityText.includes(project.city))
+    ) || (workspace.projects || []).find((project) => project.name === title);
+  };
+
+  const openShareModal = (project) => {
+    const link = createShareLink(project);
+    const { backdrop, close } = createBackdrop(`
+      <section class="ch-share-modal">
+        <header class="ch-share-head">
+          <div><small>PARTAGE DE CHANTIER</small><h2>${escapeHtml(project.name)}</h2></div>
+          <button class="ch-share-close" type="button">×</button>
+        </header>
+        <div class="ch-share-content">
+          <div class="ch-share-intro">
+            <strong>Partager une copie du chantier</strong>
+            <span>Le destinataire pourra importer le planning, les dates, les statuts, les coordonnées, les réunions et les notes dans son compte Conduct’Home.</span>
+          </div>
+          <label>
+            <span>Adresse e-mail du destinataire</span>
+            <input id="ch-share-email" type="email" placeholder="collaborateur@entreprise.fr">
+          </label>
+          <label>
+            <span>Lien de partage</span>
+            <textarea id="ch-share-link" rows="4" readonly></textarea>
+          </label>
+          <p class="ch-share-warning">Les documents enregistrés uniquement sur ton ordinateur ne sont pas inclus dans le lien.</p>
+          <p class="ch-share-status" id="ch-share-status"></p>
+        </div>
+        <div class="ch-share-actions">
+          <button class="ch-share-secondary" id="ch-share-cancel" type="button">Fermer</button>
+          <button class="ch-share-secondary" id="ch-share-copy" type="button">Copier le lien</button>
+          <button class="ch-share-primary" id="ch-share-mail" type="button">Préparer l’e-mail</button>
+        </div>
+      </section>
+    `);
+
+    const email = backdrop.querySelector('#ch-share-email');
+    const linkField = backdrop.querySelector('#ch-share-link');
+    const status = backdrop.querySelector('#ch-share-status');
+    linkField.value = link;
+    linkField.addEventListener('focus', () => linkField.select());
+    backdrop.querySelector('#ch-share-cancel').addEventListener('click', close);
+
+    backdrop.querySelector('#ch-share-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(link);
+        status.textContent = 'Lien copié.';
+      } catch {
+        linkField.select();
+        status.textContent = 'Copie automatique bloquée : le lien est sélectionné, fais Ctrl+C.';
+      }
+    });
+
+    backdrop.querySelector('#ch-share-mail').addEventListener('click', () => {
+      const subject = `Partage du chantier ${project.name}`;
+      const body = [
+        'Bonjour,',
+        '',
+        `Je te partage le chantier ${project.name}${project.city ? ` à ${project.city}` : ''}.`,
+        '',
+        'Ouvre le lien ci-dessous puis connecte-toi à Conduct’Home pour importer le chantier :',
+        link,
+        '',
+        'Cordialement,',
+      ].join('\n');
+      location.href = `mailto:${encodeURIComponent(email.value.trim())}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    });
+  };
+
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+
+  const injectShareButton = () => {
+    const actions = document.querySelector('.project-hero-actions');
+    if (!actions || actions.querySelector('.ch-share-project-button')) return;
+    const modifyButton = [...actions.querySelectorAll('button')].find((button) => button.textContent?.includes('Modifier'));
+    if (!modifyButton) return;
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary-button light-button ch-share-project-button';
+    button.textContent = 'Partager';
+    button.addEventListener('click', () => {
+      const project = findSelectedProject();
+      if (project) openShareModal(project);
+      else alert('Impossible de retrouver ce chantier dans les données.');
+    });
+    actions.insertBefore(button, modifyButton);
+  };
+
+  const normalizeCommandsTab = () => {
+    const button = document.querySelector('.ch-orders-nav-item');
+    if (!button) return;
+    button.classList.add('nav-item');
+    if (!button.querySelector('.nav-icon')) {
+      button.innerHTML = '<span class="nav-icon"></span><span>Commandes</span>';
+    }
+  };
+
+  const readPayload = () => {
+    if (!location.hash.startsWith(SHARE_PREFIX)) return undefined;
+    try {
+      const payload = JSON.parse(fromBase64Url(location.hash.slice(SHARE_PREFIX.length)));
+      if (payload?.version !== 1 || !payload.project?.name || !Array.isArray(payload.project?.stages)) return undefined;
+      return payload;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const saveWorkspaceRemote = async (workspace) => {
+    const session = getSession();
+    if (!session?.id || !session?.idToken) throw new Error('Session expirée. Reconnecte-toi.');
+    const response = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${session.id}/workspace/main`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.idToken}`,
+        },
+        body: JSON.stringify({
+          fields: {
+            workspaceJson: { stringValue: JSON.stringify(workspace) },
+            updatedAt: { timestampValue: new Date().toISOString() },
+          },
+        }),
+      },
+    );
+    if (!response.ok) throw new Error('Synchronisation du chantier impossible.');
+  };
+
+  const showImportModal = () => {
+    if (importModalShown || !document.querySelector('.app-shell')) return;
+    const payload = readPayload();
+    if (!payload) return;
+    importModalShown = true;
+
+    const project = payload.project;
+    const progress = project.stages.length
+      ? Math.round(project.stages.filter((stage) => stage.status === 'done').length / project.stages.length * 100)
+      : 0;
+
+    const { backdrop, close } = createBackdrop(`
+      <section class="ch-share-modal">
+        <header class="ch-share-head">
+          <div><small>CHANTIER PARTAGÉ</small><h2>${escapeHtml(project.name)}</h2></div>
+          <button class="ch-share-close" type="button">×</button>
+        </header>
+        <div class="ch-share-content">
+          <div class="ch-share-intro">
+            <strong>${escapeHtml(project.clientName || 'Client non renseigné')}</strong>
+            <span>${escapeHtml(project.city || '')}${payload.sharedBy ? ` · Partagé par ${escapeHtml(payload.sharedBy)}` : ''}</span>
+          </div>
+          <div class="ch-share-summary">
+            <div><span>Étapes</span><strong>${project.stages.length}</strong></div>
+            <div><span>Avancement</span><strong>${progress}%</strong></div>
+          </div>
+          <p class="ch-share-warning">L’import crée une copie du chantier dans ton compte. Les fichiers locaux de l’expéditeur ne sont pas transférés.</p>
+          <p class="ch-share-status" id="ch-import-status"></p>
+        </div>
+        <div class="ch-share-actions">
+          <button class="ch-share-secondary" id="ch-import-refuse" type="button">Refuser</button>
+          <button class="ch-share-primary" id="ch-import-confirm" type="button">Importer le chantier</button>
+        </div>
+      </section>
+    `);
+
+    const clearShare = () => {
+      history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+      close();
+    };
+
+    backdrop.querySelector('#ch-import-refuse').addEventListener('click', clearShare);
+    backdrop.querySelector('.ch-share-close').addEventListener('click', clearShare);
+
+    backdrop.querySelector('#ch-import-confirm').addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const status = backdrop.querySelector('#ch-import-status');
+      button.disabled = true;
+      button.textContent = 'Import en cours…';
+
+      try {
+        const entry = getWorkspaceEntry();
+        if (!entry) throw new Error('Espace utilisateur introuvable.');
+        const now = new Date().toISOString();
+        const imported = {
+          ...project,
+          id: `p-${crypto.randomUUID()}`,
+          archivedAt: undefined,
+          archiveReason: undefined,
+          createdAt: now,
+          updatedAt: now,
+          sharedFrom: payload.sharedBy,
+          sharedAt: payload.sharedAt,
+          stages: project.stages.map((stage) => ({ ...stage })),
+          meetings: project.meetings?.map((meeting) => ({ ...meeting })),
+          controlChecks: project.controlChecks?.map((check) => ({ ...check })),
+        };
+
+        const workspace = {
+          ...entry.value,
+          projects: [...(entry.value.projects || []), imported],
+        };
+
+        localStorage.setItem(entry.key, JSON.stringify(workspace));
+        await saveWorkspaceRemote(workspace);
+        window.dispatchEvent(new CustomEvent('conduct-home-remote-sync', { detail: workspace }));
+        history.replaceState({}, document.title, `${location.pathname}${location.search}`);
+        status.textContent = `Le chantier ${imported.name} a été importé.`;
+        button.textContent = 'Chantier importé';
+        setTimeout(() => {
+          close();
+          const projectTab = [...document.querySelectorAll('.sidebar-nav .nav-item')].find((item) => item.textContent?.trim() === 'Chantiers');
+          projectTab?.click();
+        }, 900);
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : 'Import impossible.';
+        button.disabled = false;
+        button.textContent = 'Importer le chantier';
+      }
+    });
+  };
+
+  const run = () => {
+    normalizeCommandsTab();
+    injectShareButton();
+    showImportModal();
+  };
+
+  const observer = new MutationObserver(run);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  run();
+  setInterval(run, 800);
 })();
 </script>
 </body>
