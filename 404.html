@@ -1035,6 +1035,38 @@
   }
 }
 
+
+/* =========================================================
+   V1.49 — étape de réunion + compte rendu PDF A4
+   ========================================================= */
+.ch-meeting-stage-field select {
+  width: 100%;
+}
+
+.ch-meeting-pdf-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #5b6470;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ch-meeting-stage {
+  display: inline-flex !important;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #a61221 !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+}
+
 </style>
 </head>
 <body>
@@ -2582,6 +2614,534 @@ Error generating stack: `+e.message+`
   observer.observe(document.documentElement, { childList: true, subtree: true });
   run();
   window.setInterval(run, 700);
+})();
+</script>
+<script>
+(() => {
+  const STAGES = [{"id":"map","label":"MAP"},{"id":"av_exchange","label":"AV envoi & retour"},{"id":"mse_exchange","label":"MSE envoi & retour"},{"id":"order_sending","label":"Envoi commande"},{"id":"opening","label":"Ouverture"},{"id":"foundations","label":"Fondations"},{"id":"vs_basement","label":"VS / SSol"},{"id":"tubing","label":"Tubage"},{"id":"floor_slab_pour","label":"Coulage du plancher"},{"id":"elevations","label":"Élévations"},{"id":"frame_delivery","label":"Livraison Charpente"},{"id":"frame","label":"Charpente"},{"id":"roof","label":"Couverture"},{"id":"zinc","label":"Zinguerie"},{"id":"thresholds","label":"Pose des seuils"},{"id":"pre_backfill","label":"Pré remblais"},{"id":"ext_joinery_delivery","label":"Livraison Mext"},{"id":"ext_joinery","label":"Mext"},{"id":"interior_joinery_delivery","label":"Livraison Mint"},{"id":"drywall_delivery","label":"Livraison Placo"},{"id":"drywall_first","label":"Placo 1ère"},{"id":"electrical_octopus_delivery","label":"Livraison Pieuvre élec"},{"id":"electrical_first","label":"Électricité 1ère"},{"id":"plumbing_first","label":"Plomberie 1ère"},{"id":"drywall_second","label":"Placo 2ème"},{"id":"joints","label":"Bandes"},{"id":"electrical_second","label":"Électricité 2ème"},{"id":"plumbing_second","label":"Plomberie 2ème"},{"id":"underfloor_heating","label":"Plancher chauffant"},{"id":"insulation_delivery","label":"Livraison Isolant"},{"id":"insulation_installation","label":"Pose Isolant"},{"id":"liquid_screed","label":"Chappe liquide"},{"id":"attic_insulation","label":"Isolation combles"},{"id":"sanitary_delivery","label":"Livraison sanitaires"},{"id":"sanitary","label":"Sanitaires"},{"id":"tile_delivery","label":"Livraison carrelage"},{"id":"tile_installation","label":"Pose carrelage"},{"id":"interior_joinery_installation","label":"Pose Mint"},{"id":"painting","label":"Peinture"},{"id":"stairs","label":"Escalier"},{"id":"render","label":"Enduit"},{"id":"heating","label":"Chauffage"},{"id":"final_earthworks","label":"Finition Terrassement"},{"id":"permeability_test","label":"Teste perméa"},{"id":"cleaning","label":"Nettoyage"}];
+  const SESSION_KEY = 'conduct-home-firebase-rest-session-v1';
+  const FIREBASE_PROJECT_ID = 'arlogis-conduc-home';
+  const preparedModals = new WeakSet();
+  const downloadedReports = new Set();
+
+  const stageLabel = (stageId) => STAGES.find((stage) => stage.id === stageId)?.label || 'Non définie';
+
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]);
+
+  const getWorkspaceEntry = () => {
+    const keys = Object.keys(localStorage)
+      .filter((key) => key.startsWith('conduct-home-workspace-v1.2-clean'))
+      .sort((a, b) => Number(b.includes('::')) - Number(a.includes('::')));
+
+    for (const key of keys) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || '');
+        if (value && Array.isArray(value.projects)) return { key, value };
+      } catch {}
+    }
+    return undefined;
+  };
+
+  const getSession = () => {
+    try {
+      return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    } catch {
+      return undefined;
+    }
+  };
+
+  const getCurrentProject = () => {
+    const entry = getWorkspaceEntry();
+    if (!entry) return undefined;
+
+    const hero = document.querySelector('.project-detail-hero');
+    const title = hero?.querySelector('h2')?.textContent?.trim();
+    const details = hero?.querySelector('p')?.textContent || '';
+    if (!title) return undefined;
+
+    const project = entry.value.projects.find((item) =>
+      item.name === title && (!item.city || details.includes(item.city))
+    ) || entry.value.projects.find((item) => item.name === title);
+
+    return project ? { entry, project } : undefined;
+  };
+
+  const saveRemoteWorkspace = async (workspace) => {
+    const session = getSession();
+    if (!session?.id || !session?.idToken) return;
+
+    await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${session.id}/workspace/main`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.idToken}`,
+        },
+        body: JSON.stringify({
+          fields: {
+            workspaceJson: { stringValue: JSON.stringify(workspace) },
+            updatedAt: { timestampValue: new Date().toISOString() },
+          },
+        }),
+      },
+    );
+  };
+
+  const findLabel = (modal, text) =>
+    [...modal.querySelectorAll('label')].find((label) => label.querySelector(':scope > span')?.textContent?.trim().startsWith(text));
+
+  const findMeetingModal = () =>
+    [...document.querySelectorAll('.modal')].find((modal) => {
+      const title = modal.querySelector('.modal-header h2')?.textContent || '';
+      return title.includes('réunion');
+    });
+
+  const findExistingMeeting = (project, modal) => {
+    const titleValue = findLabel(modal, 'Titre')?.querySelector('input')?.value?.trim();
+    const dateValue = findLabel(modal, 'Date')?.querySelector('input')?.value;
+    const typeValue = findLabel(modal, 'Type')?.querySelector('input')?.value?.trim();
+    return [...(project.meetings || [])]
+      .reverse()
+      .find((meeting) =>
+        (!titleValue || meeting.title === titleValue) &&
+        (!dateValue || meeting.meetingDate === dateValue) &&
+        (!typeValue || meeting.type === typeValue)
+      );
+  };
+
+  const defaultStageId = (project) =>
+    project.stages?.find((stage) => stage.status === 'in_progress' || stage.status === 'blocked')?.stageId
+    || project.stages?.find((stage) => stage.status === 'scheduled' || stage.status === 'todo')?.stageId
+    || '';
+
+  const prepareMeetingModal = () => {
+    const modal = findMeetingModal();
+    if (!modal || preparedModals.has(modal)) return;
+
+    const context = getCurrentProject();
+    const formGrid = modal.querySelector('.form-grid');
+    const notesLabel = findLabel(modal, 'Notes');
+    if (!context || !formGrid || !notesLabel) return;
+
+    preparedModals.add(modal);
+
+    const existingMeeting = findExistingMeeting(context.project, modal);
+    const label = document.createElement('label');
+    label.className = 'full-field ch-meeting-stage-field';
+    label.innerHTML = `
+      <span>Étape du chantier *</span>
+      <select>
+        <option value="">Choisir l’étape concernée</option>
+        ${STAGES.map((stage) => `<option value="${escapeHtml(stage.id)}">${escapeHtml(stage.label)}</option>`).join('')}
+      </select>
+    `;
+
+    const select = label.querySelector('select');
+    select.value = existingMeeting?.stageId || defaultStageId(context.project);
+    formGrid.insertBefore(label, notesLabel);
+
+    const note = document.createElement('p');
+    note.className = 'ch-meeting-pdf-note';
+    note.textContent = 'À l’enregistrement, un compte rendu A4 au format PDF sera automatiquement téléchargé.';
+    notesLabel.insertAdjacentElement('afterend', note);
+  };
+
+  const cp1252Extra = {
+    '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87,
+    'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a, '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e, '‘': 0x91,
+    '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97, '˜': 0x98,
+    '™': 0x99, 'š': 0x9a, '›': 0x9b, 'œ': 0x9c, 'ž': 0x9e, 'Ÿ': 0x9f,
+  };
+
+  const toCp1252Byte = (character) => {
+    if (cp1252Extra[character] !== undefined) return cp1252Extra[character];
+    const code = character.codePointAt(0) || 63;
+    if (code >= 32 && code <= 255) return code;
+    if (character === '\t') return 32;
+    const simplified = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const simplifiedCode = simplified.codePointAt(0);
+    return simplifiedCode && simplifiedCode >= 32 && simplifiedCode <= 126 ? simplifiedCode : 63;
+  };
+
+  const pdfHex = (value) =>
+    `<${Array.from(String(value)).map((character) => toCp1252Byte(character).toString(16).padStart(2, '0')).join('')}>`;
+
+  const pdfNumber = (value) => Number(value.toFixed(2)).toString();
+
+  const estimateTextWidth = (value, fontSize, bold = false) => {
+    const factor = bold ? 1.04 : 1;
+    return Array.from(String(value)).reduce((width, character) => {
+      if (character === ' ') return width + fontSize * 0.28;
+      if ("ilI.,'!:;|".includes(character)) return width + fontSize * 0.25;
+      if ('MW@%&'.includes(character)) return width + fontSize * 0.82;
+      if (/[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ]/.test(character)) return width + fontSize * 0.62 * factor;
+      if (/[0-9]/.test(character)) return width + fontSize * 0.56 * factor;
+      return width + fontSize * 0.5 * factor;
+    }, 0);
+  };
+
+  const wrapLine = (value, maxWidth, fontSize, bold = false) => {
+    const words = String(value).trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return [''];
+
+    const lines = [];
+    let current = '';
+
+    const pushLongWord = (word) => {
+      let chunk = '';
+      for (const character of Array.from(word)) {
+        const next = `${chunk}${character}`;
+        if (chunk && estimateTextWidth(next, fontSize, bold) > maxWidth) {
+          lines.push(chunk);
+          chunk = character;
+        } else {
+          chunk = next;
+        }
+      }
+      current = chunk;
+    };
+
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (estimateTextWidth(candidate, fontSize, bold) <= maxWidth) {
+        current = candidate;
+        continue;
+      }
+      if (current) lines.push(current);
+      if (estimateTextWidth(word, fontSize, bold) > maxWidth) {
+        current = '';
+        pushLongWord(word);
+      } else {
+        current = word;
+      }
+    }
+
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  const formatFrenchDate = (value) => {
+    const parsed = new Date(`${value}T12:00:00`);
+    return Number.isNaN(parsed.getTime())
+      ? value
+      : new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }).format(parsed);
+  };
+
+  const meetingStatusLabel = (status) => ({
+    planned: 'Prévue',
+    done: 'Réalisée',
+    cancelled: 'Annulée',
+  })[status] || status;
+
+  const sanitizeFileName = (value) =>
+    String(value)
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+  const createMeetingPdf = ({ project, meeting, selectedStageLabel }) => {
+    const PAGE_WIDTH = 595.28;
+    const PAGE_HEIGHT = 841.89;
+    const MARGIN = 44;
+    const BOTTOM_LIMIT = PAGE_HEIGHT - 62;
+    const pages = [];
+    let page;
+    let top = 0;
+
+    const addCommand = (command) => page.commands.push(command);
+    const fillRect = (x, yTop, width, height, rgb) => {
+      addCommand(`${rgb.map(pdfNumber).join(' ')} rg ${pdfNumber(x)} ${pdfNumber(PAGE_HEIGHT - yTop - height)} ${pdfNumber(width)} ${pdfNumber(height)} re f`);
+    };
+    const strokeLine = (x1, y1Top, x2, y2Top, rgb, lineWidth = 1) => {
+      addCommand(`${rgb.map(pdfNumber).join(' ')} RG ${pdfNumber(lineWidth)} w ${pdfNumber(x1)} ${pdfNumber(PAGE_HEIGHT - y1Top)} m ${pdfNumber(x2)} ${pdfNumber(PAGE_HEIGHT - y2Top)} l S`);
+    };
+    const drawText = (value, x, yTop, fontSize, bold = false, rgb = [0.16, 0.18, 0.21]) => {
+      addCommand(`BT /${bold ? 'F2' : 'F1'} ${pdfNumber(fontSize)} Tf ${rgb.map(pdfNumber).join(' ')} rg 1 0 0 1 ${pdfNumber(x)} ${pdfNumber(PAGE_HEIGHT - yTop - fontSize)} Tm ${pdfHex(value)} Tj ET`);
+    };
+    const drawRightText = (value, rightX, yTop, fontSize, bold = false, rgb = [0.16, 0.18, 0.21]) => {
+      drawText(value, rightX - estimateTextWidth(value, fontSize, bold), yTop, fontSize, bold, rgb);
+    };
+    const drawHeader = (continuation = false) => {
+      fillRect(0, 0, PAGE_WIDTH, 8, [0.77, 0.06, 0.14]);
+      drawText('MAISONS ARLOGIS', MARGIN, 24, 9, true, [0.36, 0.38, 0.42]);
+      drawText(
+        continuation ? 'COMPTE RENDU DE RÉUNION - SUITE' : 'COMPTE RENDU DE RÉUNION DE CHANTIER',
+        MARGIN,
+        41,
+        continuation ? 16 : 18,
+        true,
+        [0.12, 0.14, 0.17],
+      );
+      drawRightText(formatFrenchDate(meeting.meetingDate), PAGE_WIDTH - MARGIN, 27, 9, true, [0.36, 0.38, 0.42]);
+      strokeLine(MARGIN, 76, PAGE_WIDTH - MARGIN, 76, [0.86, 0.87, 0.89], 0.8);
+      top = 94;
+    };
+    const newPage = (continuation = false) => {
+      page = { commands: [] };
+      pages.push(page);
+      drawHeader(continuation);
+    };
+    const ensureSpace = (height) => {
+      if (top + height <= BOTTOM_LIMIT) return;
+      newPage(true);
+    };
+    const drawInfoField = (label, value, x, y, width, height = 49) => {
+      fillRect(x, y, width, height, [0.965, 0.968, 0.972]);
+      drawText(label.toUpperCase(), x + 11, y + 9, 7.5, true, [0.46, 0.49, 0.54]);
+      wrapLine(value || 'Non renseigné', width - 22, 10.5, true).slice(0, 2)
+        .forEach((line, index) => drawText(line, x + 11, y + 23 + index * 12, 10.5, true));
+    };
+
+    const notes = meeting.notes?.trim() || 'Aucune remarque saisie lors de cette réunion.';
+    newPage();
+
+    const gap = 10;
+    const columnWidth = (PAGE_WIDTH - MARGIN * 2 - gap) / 2;
+    drawInfoField('Chantier', project.name, MARGIN, top, columnWidth);
+    drawInfoField('Client', project.clientName, MARGIN + columnWidth + gap, top, columnWidth);
+    top += 59;
+
+    const address = [project.address, project.postalCode, project.city].filter(Boolean).join(', ');
+    drawInfoField('Adresse du chantier', address || project.city, MARGIN, top, columnWidth);
+    drawInfoField('Étape du chantier', selectedStageLabel, MARGIN + columnWidth + gap, top, columnWidth);
+    top += 59;
+
+    drawInfoField('Réunion', `${meeting.title} - ${meeting.type}`, MARGIN, top, columnWidth);
+    drawInfoField('Statut', meetingStatusLabel(meeting.status), MARGIN + columnWidth + gap, top, columnWidth);
+    top += 67;
+
+    fillRect(MARGIN, top, PAGE_WIDTH - MARGIN * 2, 29, [0.995, 0.93, 0.94]);
+    drawText('REMARQUES, DÉCISIONS ET ACTIONS', MARGIN + 12, top + 9, 9, true, [0.64, 0.05, 0.11]);
+    top += 41;
+
+    const paragraphs = notes.replace(/\r/g, '').split('\n');
+    for (const paragraph of paragraphs) {
+      if (!paragraph.trim()) {
+        ensureSpace(9);
+        top += 9;
+        continue;
+      }
+
+      const trimmed = paragraph.trim();
+      const isBullet = /^[-*•]\s+/.test(trimmed);
+      const content = isBullet ? trimmed.replace(/^[-*•]\s+/, '') : trimmed;
+      const leftIndent = isBullet ? 15 : 0;
+      const lines = wrapLine(content, PAGE_WIDTH - MARGIN * 2 - leftIndent, 10.5);
+      const paragraphHeight = lines.length * 15 + 4;
+      if (paragraphHeight < BOTTOM_LIMIT - 94) ensureSpace(paragraphHeight);
+
+      lines.forEach((line, index) => {
+        ensureSpace(16);
+        if (isBullet && index === 0) drawText('•', MARGIN, top, 10.5, true, [0.77, 0.06, 0.14]);
+        drawText(line, MARGIN + leftIndent, top, 10.5, false, [0.18, 0.2, 0.23]);
+        top += 15;
+      });
+      top += 4;
+    }
+
+    ensureSpace(72);
+    top += 9;
+    strokeLine(MARGIN, top, PAGE_WIDTH - MARGIN, top, [0.89, 0.9, 0.92], 0.7);
+    top += 14;
+    drawText(
+      'Ce document synthétise les points abordés pendant la réunion et peut être transmis directement au client.',
+      MARGIN,
+      top,
+      8.5,
+      false,
+      [0.42, 0.45, 0.5],
+    );
+
+    pages.forEach((pdfPage, index) => {
+      const previousPage = page;
+      page = pdfPage;
+      strokeLine(MARGIN, PAGE_HEIGHT - 42, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 42, [0.88, 0.89, 0.91], 0.7);
+      drawText(`Conduct'Home - ${project.name}`, MARGIN, PAGE_HEIGHT - 31, 7.5, false, [0.48, 0.51, 0.56]);
+      drawRightText(`Page ${index + 1}/${pages.length}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 31, 7.5, true, [0.48, 0.51, 0.56]);
+      page = previousPage;
+    });
+
+    const objectCount = 4 + pages.length * 2;
+    const objects = new Array(objectCount + 1);
+    objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    const pageObjectNumbers = pages.map((_, index) => 5 + index * 2);
+    objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((value) => `${value} 0 R`).join(' ')}] /Count ${pages.length} >>`;
+    objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+
+    pages.forEach((pdfPage, index) => {
+      const pageObjectNumber = 5 + index * 2;
+      const contentObjectNumber = pageObjectNumber + 1;
+      const stream = pdfPage.commands.join('\n');
+      const streamLength = new TextEncoder().encode(stream).length;
+      objects[pageObjectNumber] =
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfNumber(PAGE_WIDTH)} ${pdfNumber(PAGE_HEIGHT)}] ` +
+        `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
+      objects[contentObjectNumber] = `<< /Length ${streamLength} >>\nstream\n${stream}\nendstream`;
+    });
+
+    let pdf = '%PDF-1.4\n%1234\n';
+    const offsets = new Array(objectCount + 1).fill(0);
+    const encoder = new TextEncoder();
+
+    for (let objectNumber = 1; objectNumber <= objectCount; objectNumber += 1) {
+      offsets[objectNumber] = encoder.encode(pdf).length;
+      pdf += `${objectNumber} 0 obj\n${objects[objectNumber]}\nendobj\n`;
+    }
+
+    const xrefOffset = encoder.encode(pdf).length;
+    pdf += `xref\n0 ${objectCount + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+    for (let objectNumber = 1; objectNumber <= objectCount; objectNumber += 1) {
+      pdf += `${offsets[objectNumber].toString().padStart(10, '0')} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objectCount + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+    return new Blob([encoder.encode(pdf)], { type: 'application/pdf' });
+  };
+
+  const downloadMeetingPdf = (project, meeting) => {
+    const signature = `${project.id}|${meeting.title}|${meeting.meetingDate}|${meeting.updatedAt || meeting.notes || ''}`;
+    if (downloadedReports.has(signature)) return;
+    downloadedReports.add(signature);
+
+    const blob = createMeetingPdf({
+      project,
+      meeting,
+      selectedStageLabel: stageLabel(meeting.stageId),
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Compte-rendu-${sanitizeFileName(project.name)}-${meeting.meetingDate}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  };
+
+  const captureMeetingForm = (modal) => {
+    const title = findLabel(modal, 'Titre')?.querySelector('input')?.value?.trim() || 'Réunion de chantier';
+    const meetingDate = findLabel(modal, 'Date')?.querySelector('input')?.value || new Date().toISOString().slice(0, 10);
+    const type = findLabel(modal, 'Type')?.querySelector('input')?.value?.trim() || 'Réunion chantier';
+    const status = findLabel(modal, 'Statut')?.querySelector('select')?.value || 'planned';
+    const notes = findLabel(modal, 'Notes')?.querySelector('textarea')?.value?.trim() || '';
+    const stageId = modal.querySelector('.ch-meeting-stage-field select')?.value || '';
+
+    return { title, meetingDate, type, status, notes, stageId };
+  };
+
+  const waitAndPatchMeeting = async (projectId, snapshot, attempt = 0) => {
+    const entry = getWorkspaceEntry();
+    if (!entry) return undefined;
+    const projectIndex = entry.value.projects.findIndex((project) => project.id === projectId);
+    if (projectIndex < 0) return undefined;
+
+    const project = entry.value.projects[projectIndex];
+    const meetings = [...(project.meetings || [])];
+    const meetingIndex = meetings.findIndex((meeting) =>
+      meeting.title === snapshot.title &&
+      meeting.meetingDate === snapshot.meetingDate &&
+      meeting.type === snapshot.type &&
+      (meeting.notes || '') === snapshot.notes
+    );
+
+    if (meetingIndex < 0) {
+      if (attempt >= 15) return undefined;
+      await new Promise((resolve) => setTimeout(resolve, 180));
+      return waitAndPatchMeeting(projectId, snapshot, attempt + 1);
+    }
+
+    const patchedMeeting = {
+      ...meetings[meetingIndex],
+      stageId: snapshot.stageId,
+    };
+    meetings[meetingIndex] = patchedMeeting;
+
+    const patchedProject = { ...project, meetings };
+    const patchedWorkspace = {
+      ...entry.value,
+      projects: entry.value.projects.map((item, index) => index === projectIndex ? patchedProject : item),
+    };
+
+    localStorage.setItem(entry.key, JSON.stringify(patchedWorkspace));
+    window.dispatchEvent(new CustomEvent('conduct-home-remote-sync', { detail: patchedWorkspace }));
+    void saveRemoteWorkspace(patchedWorkspace);
+    return { project: patchedProject, meeting: patchedMeeting };
+  };
+
+  document.addEventListener('click', (event) => {
+    const button = event.target?.closest?.('button');
+    if (!button || button.textContent?.trim() !== 'Enregistrer') return;
+
+    const modal = button.closest('.modal');
+    const modalTitle = modal?.querySelector('.modal-header h2')?.textContent || '';
+    if (!modal || !modalTitle.includes('réunion')) return;
+
+    const context = getCurrentProject();
+    const snapshot = captureMeetingForm(modal);
+    if (!context) return;
+
+    if (!snapshot.stageId) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const select = modal.querySelector('.ch-meeting-stage-field select');
+      select?.focus();
+      alert('Choisis l’étape du chantier avant d’enregistrer la réunion.');
+      return;
+    }
+
+    setTimeout(async () => {
+      const result = await waitAndPatchMeeting(context.project.id, snapshot);
+      if (result) {
+        downloadMeetingPdf(result.project, result.meeting);
+      } else {
+        downloadMeetingPdf(context.project, {
+          id: `meeting-${Date.now()}`,
+          ...snapshot,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }, 250);
+  }, true);
+
+  const decorateMeetingCards = () => {
+    const context = getCurrentProject();
+    if (!context) return;
+
+    document.querySelectorAll('.meeting-card').forEach((card) => {
+      if (card.querySelector('.ch-meeting-stage')) return;
+      const title = card.querySelector('strong')?.textContent?.trim();
+      const type = card.querySelector(':scope > div > span')?.textContent?.trim();
+      const meeting = [...(context.project.meetings || [])]
+        .reverse()
+        .find((item) => item.title === title && (!type || item.type === type));
+      if (!meeting?.stageId) return;
+
+      const chip = document.createElement('small');
+      chip.className = 'ch-meeting-stage';
+      chip.textContent = `Étape : ${stageLabel(meeting.stageId)}`;
+      card.querySelector(':scope > div')?.appendChild(chip);
+    });
+  };
+
+  const run = () => {
+    prepareMeetingModal();
+    decorateMeetingCards();
+  };
+
+  const observer = new MutationObserver(run);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  run();
+  setInterval(run, 650);
 })();
 </script>
 </body>
