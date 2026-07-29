@@ -2972,11 +2972,31 @@ Error generating stack: `+e.message+`
     let top = 0;
 
     const addCommand = (command) => page.commands.push(command);
+    const roundRectPath = (x, yTop, width, height, radius = 12) => {
+      const y = PAGE_HEIGHT - yTop - height;
+      const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+      const k = 0.5522847498;
+      return [
+        `${pdfNumber(x + r)} ${pdfNumber(y)} m`,
+        `${pdfNumber(x + width - r)} ${pdfNumber(y)} l`,
+        `${pdfNumber(x + width - r + r * k)} ${pdfNumber(y)} ${pdfNumber(x + width)} ${pdfNumber(y + r - r * k)} ${pdfNumber(x + width)} ${pdfNumber(y + r)} c`,
+        `${pdfNumber(x + width)} ${pdfNumber(y + height - r)} l`,
+        `${pdfNumber(x + width)} ${pdfNumber(y + height - r + r * k)} ${pdfNumber(x + width - r + r * k)} ${pdfNumber(y + height)} ${pdfNumber(x + width - r)} ${pdfNumber(y + height)} c`,
+        `${pdfNumber(x + r)} ${pdfNumber(y + height)} l`,
+        `${pdfNumber(x + r - r * k)} ${pdfNumber(y + height)} ${pdfNumber(x)} ${pdfNumber(y + height - r + r * k)} ${pdfNumber(x)} ${pdfNumber(y + height - r)} c`,
+        `${pdfNumber(x)} ${pdfNumber(y + r)} l`,
+        `${pdfNumber(x)} ${pdfNumber(y + r - r * k)} ${pdfNumber(x + r - r * k)} ${pdfNumber(y)} ${pdfNumber(x + r)} ${pdfNumber(y)} c`,
+        'h',
+      ].join(' ');
+    };
     const fillRect = (x, yTop, width, height, rgb) => {
       addCommand(`${rgb.map(pdfNumber).join(' ')} rg ${pdfNumber(x)} ${pdfNumber(PAGE_HEIGHT - yTop - height)} ${pdfNumber(width)} ${pdfNumber(height)} re f`);
     };
-    const strokeRect = (x, yTop, width, height, rgb, lineWidth = 1) => {
-      addCommand(`${rgb.map(pdfNumber).join(' ')} RG ${pdfNumber(lineWidth)} w ${pdfNumber(x)} ${pdfNumber(PAGE_HEIGHT - yTop - height)} ${pdfNumber(width)} ${pdfNumber(height)} re S`);
+    const fillRoundRect = (x, yTop, width, height, rgb, radius = 12) => {
+      addCommand(`${rgb.map(pdfNumber).join(' ')} rg ${roundRectPath(x, yTop, width, height, radius)} f`);
+    };
+    const strokeRoundRect = (x, yTop, width, height, rgb, lineWidth = 1, radius = 12) => {
+      addCommand(`${rgb.map(pdfNumber).join(' ')} RG ${pdfNumber(lineWidth)} w ${roundRectPath(x, yTop, width, height, radius)} S`);
     };
     const strokeLine = (x1, y1Top, x2, y2Top, rgb, lineWidth = 1) => {
       addCommand(`${rgb.map(pdfNumber).join(' ')} RG ${pdfNumber(lineWidth)} w ${pdfNumber(x1)} ${pdfNumber(PAGE_HEIGHT - y1Top)} m ${pdfNumber(x2)} ${pdfNumber(PAGE_HEIGHT - y2Top)} l S`);
@@ -2987,78 +3007,53 @@ Error generating stack: `+e.message+`
     const drawRightText = (value, rightX, yTop, fontSize, bold = false, rgb = [0.16, 0.18, 0.21]) => {
       drawText(value, rightX - estimateTextWidth(value, fontSize, bold), yTop, fontSize, bold, rgb);
     };
-    const drawFieldCard = (label, value, x, y, width, minHeight = 56) => {
-      const content = value && value.trim() ? value.trim() : '—';
-      const lines = wrapLine(content, width - 24, 10.5, true).slice(0, 3);
-      const height = Math.max(minHeight, 26 + lines.length * 12 + 10);
-
-      fillRect(x, y, width, height, [0.978, 0.981, 0.985]);
-      strokeRect(x, y, width, height, [0.89, 0.9, 0.92], 0.8);
-      fillRect(x, y, 3, height, [0.77, 0.06, 0.14]);
-
-      drawText(label.toUpperCase(), x + 12, y + 8, 7.2, true, [0.44, 0.47, 0.52]);
-      lines.forEach((line, index) => drawText(line, x + 12, y + 23 + index * 12, 10.5, true, [0.15, 0.17, 0.2]));
-
-      return height;
+    const drawCenteredText = (value, centerX, yTop, fontSize, bold = false, rgb = [0.16, 0.18, 0.21]) => {
+      drawText(value, centerX - estimateTextWidth(value, fontSize, bold) / 2, yTop, fontSize, bold, rgb);
     };
-    const drawWideInfoStrip = (label, value, y) => {
-      const width = PAGE_WIDTH - MARGIN * 2;
+    const getFieldMeta = (value, width, fontSize = 10.6, bold = true, minHeight = 62) => {
       const content = value && value.trim() ? value.trim() : '—';
-      const lines = wrapLine(content, width - 24, 10, false).slice(0, 2);
-      const height = Math.max(44, 18 + lines.length * 12 + 10);
-
-      fillRect(MARGIN, y, width, height, [0.992, 0.993, 0.995]);
-      strokeRect(MARGIN, y, width, height, [0.89, 0.9, 0.92], 0.8);
-      drawText(label.toUpperCase(), MARGIN + 12, y + 8, 7, true, [0.44, 0.47, 0.52]);
-      lines.forEach((line, index) => {
-        drawText(line, MARGIN + 12, y + 21 + index * 12, 10, false, [0.22, 0.24, 0.27]);
+      const lines = wrapLine(content, width - 28, fontSize, bold).slice(0, 3);
+      const height = Math.max(minHeight, 28 + lines.length * 13 + 10);
+      return { lines, height };
+    };
+    const drawFieldCard = (label, value, x, y, width, height, fontSize = 10.6, bold = true) => {
+      const field = getFieldMeta(value, width, fontSize, bold, height ?? 62);
+      const cardHeight = height ?? field.height;
+      fillRoundRect(x, y, width, cardHeight, [0.985, 0.988, 0.992], 6);
+      strokeRoundRect(x, y, width, cardHeight, [0.89, 0.91, 0.94], 0.9, 6);
+      fillRoundRect(x + 12, y + 12, 3, cardHeight - 24, [0.77, 0.06, 0.14], 1);
+      drawText(label.toUpperCase(), x + 24, y + 12, 7.2, true, [0.46, 0.49, 0.54]);
+      field.lines.forEach((line, index) => {
+        drawText(line, x + 24, y + 28 + index * 13, fontSize, bold, [0.15, 0.17, 0.2]);
       });
-
-      return height;
+      return cardHeight;
     };
-    const drawStageBanner = (value, y) => {
-      const width = PAGE_WIDTH - MARGIN * 2;
-      fillRect(MARGIN, y, width, 46, [0.15, 0.17, 0.2]);
-      fillRect(MARGIN, y, 5, 46, [0.77, 0.06, 0.14]);
-      drawText('ÉTAPE CONCERNÉE', MARGIN + 16, y + 8, 7.4, true, [0.83, 0.85, 0.89]);
-      drawText(value || 'Non renseignée', MARGIN + 16, y + 21, 13.2, true, [1, 1, 1]);
-    };
-    const drawSectionHeader = (title, y) => {
-      fillRect(MARGIN, y, PAGE_WIDTH - MARGIN * 2, 28, [0.948, 0.951, 0.956]);
-      fillRect(MARGIN, y, 4, 28, [0.77, 0.06, 0.14]);
-      drawText(title.toUpperCase(), MARGIN + 14, y + 8, 8.3, true, [0.16, 0.18, 0.21]);
-    };
-    const drawNotesIntro = (y) => {
-      drawText('Compte rendu de la réunion', MARGIN, y, 15.5, true, [0.12, 0.14, 0.17]);
-      drawText('Observations, décisions prises et actions à suivre.', MARGIN, y + 18, 9.2, false, [0.48, 0.51, 0.56]);
+    const drawSectionPill = (label, y) => {
+      fillRoundRect(MARGIN, y, 156, 24, [0.15, 0.17, 0.2], 6);
+      drawCenteredText(label.toUpperCase(), MARGIN + 78, y + 7, 8.2, true, [1, 1, 1]);
     };
     const drawHeader = (continuation = false) => {
-      fillRect(0, 0, PAGE_WIDTH, 8, [0.77, 0.06, 0.14]);
-      drawText('MAISONS ARLOGIS', MARGIN, 24, 8.5, true, [0.43, 0.46, 0.51]);
-      drawText(
-        continuation ? 'COMPTE RENDU DE RÉUNION - SUITE' : 'COMPTE RENDU DE RÉUNION DE CHANTIER',
-        MARGIN,
-        40,
-        continuation ? 14.5 : 18.5,
-        true,
-        [0.12, 0.14, 0.17],
-      );
-      drawText("Document de suivi chantier", MARGIN, 58, 9.2, false, [0.5, 0.52, 0.57]);
-
-      const dateCardWidth = 148;
+      fillRect(0, 0, PAGE_WIDTH, 10, [0.77, 0.06, 0.14]);
+      drawText('MAISONS ARLOGIS', MARGIN, 24, 8.6, true, [0.44, 0.47, 0.52]);
+      drawText(continuation ? 'Compte rendu de réunion · suite' : 'Compte rendu de réunion de chantier', MARGIN, 39, continuation ? 15 : 19, true, [0.12, 0.14, 0.17]);
+      drawText('Document de suivi chantier', MARGIN, 58, 9.4, false, [0.49, 0.52, 0.57]);
+      const dateCardWidth = 150;
       const dateCardX = PAGE_WIDTH - MARGIN - dateCardWidth;
-      fillRect(dateCardX, 18, dateCardWidth, 46, [0.992, 0.945, 0.95]);
-      strokeRect(dateCardX, 18, dateCardWidth, 46, [0.95, 0.84, 0.86], 0.8);
-      fillRect(dateCardX, 18, 4, 46, [0.77, 0.06, 0.14]);
-      drawText('DATE DE RÉUNION', dateCardX + 12, 27, 7.1, true, [0.5, 0.24, 0.3]);
-      drawRightText(formatFrenchDate(meeting.meetingDate), dateCardX + dateCardWidth - 12, 41, 10.2, true, [0.16, 0.18, 0.21]);
-      strokeLine(MARGIN, 74, PAGE_WIDTH - MARGIN, 74, [0.88, 0.89, 0.91], 0.9);
+      fillRoundRect(dateCardX, 18, dateCardWidth, 54, [0.994, 0.965, 0.968], 8);
+      strokeRoundRect(dateCardX, 18, dateCardWidth, 54, [0.95, 0.85, 0.87], 0.9, 8);
+      drawText('DATE DE RÉUNION', dateCardX + 14, 28, 7, true, [0.56, 0.27, 0.33]);
+      drawRightText(formatFrenchDate(meeting.meetingDate), dateCardX + dateCardWidth - 14, 46, 10.5, true, [0.15, 0.17, 0.2]);
+      strokeLine(MARGIN, 82, PAGE_WIDTH - MARGIN, 82, [0.88, 0.9, 0.93], 0.8);
     };
     const newPage = (continuation = false) => {
       page = { commands: [] };
       pages.push(page);
       drawHeader(continuation);
-      top = 92;
+      top = 98;
+      if (continuation) {
+        drawSectionPill('Observations', top);
+        top += 36;
+      }
     };
     const ensureSpace = (height) => {
       if (top + height <= BOTTOM_LIMIT) return;
@@ -3067,131 +3062,110 @@ Error generating stack: `+e.message+`
 
     const projectRef = [project.projectNumber, project.contractNumber].filter(Boolean).join(' · ');
     const chantierLabel = [project.name, project.city].filter(Boolean).join(' — ');
-    const clientContact = [project.clientName, project.clientPhone || project.clientPhoneSecondary, project.clientEmail || project.clientEmailSecondary]
-      .filter(Boolean)
-      .join(' · ');
-    const siteAddress = [project.address, [project.postalCode, project.city].filter(Boolean).join(' ')]
-      .filter(Boolean)
-      .join(', ');
+    const clientContact = [project.clientName, project.clientPhone || project.clientPhoneSecondary, project.clientEmail || project.clientEmailSecondary].filter(Boolean).join(' · ');
+    const siteAddress = [project.address, [project.postalCode, project.city].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    const statusLabel = [meetingStatusLabel(meeting.status), meeting.type].filter(Boolean).join(' · ');
 
     drawHeader(false);
-    top = 94;
-
-    const columnGap = 14;
-    const columnWidth = (PAGE_WIDTH - MARGIN * 2 - columnGap) / 2;
-
-    const row1Height = Math.max(
-      drawFieldCard('Chantier', chantierLabel || project.name || '—', MARGIN, top, columnWidth),
-      drawFieldCard('Client', clientContact || project.clientName || '—', MARGIN + columnWidth + columnGap, top, columnWidth),
-    );
-    top += row1Height + 12;
-
-    const row2Height = Math.max(
-      drawFieldCard('Référence', projectRef || '—', MARGIN, top, columnWidth, 50),
-      drawFieldCard(
-        'Statut / type',
-        [meetingStatusLabel(meeting.status), meeting.type].filter(Boolean).join(' · ') || '—',
-        MARGIN + columnWidth + columnGap,
-        top,
-        columnWidth,
-        50,
-      ),
-    );
-    top += row2Height + 12;
-
-    top += drawWideInfoStrip('Adresse du chantier', siteAddress || project.city || '—', top) + 12;
-
-    drawStageBanner(selectedStageLabel || 'Non renseignée', top);
-    top += 58;
-
-    drawNotesIntro(top);
+    top = 98;
+    drawSectionPill('Informations chantier', top);
     top += 34;
 
-    drawSectionHeader('Observations et remarques', top);
+    const infoBoxY = top;
+    const outerWidth = PAGE_WIDTH - MARGIN * 2;
+    const colGap = 14;
+    const innerPadding = 12;
+    const colWidth = (outerWidth - innerPadding * 2 - colGap) / 2;
+    const innerX = MARGIN + innerPadding;
+    const innerY = infoBoxY + 18;
+
+    const chantierMeta = getFieldMeta(chantierLabel || project.name || '—', colWidth);
+    const clientMeta = getFieldMeta(clientContact || project.clientName || '—', colWidth);
+    const row1H = Math.max(chantierMeta.height, clientMeta.height);
+    const referenceMeta = getFieldMeta(projectRef || '—', colWidth);
+    const statusMeta = getFieldMeta(statusLabel || '—', colWidth);
+    const row2H = Math.max(referenceMeta.height, statusMeta.height);
+    const addressWidth = outerWidth - innerPadding * 2;
+    const addressMeta = getFieldMeta(siteAddress || project.city || '—', addressWidth, 10.2, false, 56);
+
+    const infoBoxHeight = 18 + row1H + 12 + row2H + 12 + addressMeta.height + 18;
+    fillRoundRect(MARGIN, infoBoxY, outerWidth, infoBoxHeight, [1, 1, 1], 8);
+    strokeRoundRect(MARGIN, infoBoxY, outerWidth, infoBoxHeight, [0.88, 0.9, 0.93], 1, 8);
+    drawFieldCard('Chantier', chantierLabel || project.name || '—', innerX, innerY, colWidth, row1H);
+    drawFieldCard('Client', clientContact || project.clientName || '—', innerX + colWidth + colGap, innerY, colWidth, row1H);
+    drawFieldCard('Référence', projectRef || '—', innerX, innerY + row1H + 12, colWidth, row2H);
+    drawFieldCard('Statut / type', statusLabel || '—', innerX + colWidth + colGap, innerY + row1H + 12, colWidth, row2H);
+    drawFieldCard('Adresse du chantier', siteAddress || project.city || '—', innerX, innerY + row1H + row2H + 24, addressWidth, addressMeta.height, 10.2, false);
+
+    top = infoBoxY + infoBoxHeight + 18;
+    fillRect(MARGIN, top, outerWidth, 58, [0.15, 0.17, 0.2]);
+    fillRect(MARGIN + 14, top + 14, 94, 30, [0.77, 0.06, 0.14]);
+    drawCenteredText('ÉTAPE', MARGIN + 61, top + 22, 9, true, [1, 1, 1]);
+    drawText(selectedStageLabel || 'Non renseignée', MARGIN + 124, top + 21, 14.2, true, [1, 1, 1]);
+
+    top += 78;
+    drawSectionPill('Observations', top);
+    top += 38;
+    drawText('Remarques et décisions prises', MARGIN, top, 15.2, true, [0.12, 0.14, 0.17]);
+    drawText('Compte rendu prêt à être transmis au client.', MARGIN, top + 19, 9.3, false, [0.49, 0.52, 0.57]);
     top += 38;
 
     const rawNotes = (meeting.notes || '').trim();
-    const noteBlocks = rawNotes
-      ? rawNotes
-          .replace(/\r/g, '')
-          .split(/\n{2,}/)
-          .flatMap((block) => block.split('\n').map((line) => line.trim()).filter(Boolean))
-      : ['Aucune remarque particulière n’a été renseignée pour cette réunion.'];
+    const noteBlocks = rawNotes ? rawNotes.replace(/\r/g, '').split(/\n{2,}/).flatMap((block) => block.split('\n').map((line) => line.trim()).filter(Boolean)) : ['Aucune remarque particulière n’a été renseignée pour cette réunion.'];
 
     for (const rawBlock of noteBlocks) {
-      const isBullet = /^[-*•]\s+/.test(rawBlock);
-      const content = isBullet ? rawBlock.replace(/^[-*•]\s+/, '') : rawBlock;
-      let lines = wrapLine(content, PAGE_WIDTH - MARGIN * 2 - 34, 10.4, false);
-
+      const content = rawBlock.replace(/^[-*•]\s+/, '');
+      let lines = wrapLine(content, PAGE_WIDTH - MARGIN * 2 - 30, 10.6, false);
       while (lines.length) {
-        ensureSpace(56);
-        const availableLines = Math.max(1, Math.floor((BOTTOM_LIMIT - top - 18) / 15));
+        ensureSpace(30);
+        const availableLines = Math.max(1, Math.floor((BOTTOM_LIMIT - top - 6) / 16));
         const chunk = lines.slice(0, availableLines);
-        lines = lines.slice(availableLines);
-        const cardHeight = chunk.length * 15 + 18;
-
-        fillRect(MARGIN, top, PAGE_WIDTH - MARGIN * 2, cardHeight, [0.986, 0.988, 0.991]);
-        strokeRect(MARGIN, top, PAGE_WIDTH - MARGIN * 2, cardHeight, [0.9, 0.91, 0.93], 0.8);
-        fillRect(MARGIN, top, 3, cardHeight, [0.77, 0.06, 0.14]);
-
-        if (isBullet) {
-          drawText('•', MARGIN + 13, top + 8, 11, true, [0.77, 0.06, 0.14]);
-        }
-
+        lines = lines.slice(chunk.length);
+        fillRoundRect(MARGIN + 3, top + 5, 8, 8, [0.77, 0.06, 0.14], 4);
         chunk.forEach((line, index) => {
-          drawText(line, MARGIN + (isBullet ? 26 : 14), top + 8 + index * 15, 10.4, false, [0.18, 0.2, 0.23]);
+          drawText(line, MARGIN + 24, top + index * 16, 10.6, false, [0.18, 0.2, 0.23]);
         });
-
-        top += cardHeight + 8;
+        top += chunk.length * 16 + 12;
       }
     }
 
     pages.forEach((pdfPage, index) => {
       const previousPage = page;
       page = pdfPage;
-      strokeLine(MARGIN, PAGE_HEIGHT - 42, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 42, [0.88, 0.89, 0.91], 0.7);
-      drawText(`Conduct'Home • ${project.name}`, MARGIN, PAGE_HEIGHT - 31, 7.6, false, [0.48, 0.51, 0.56]);
-      drawRightText(`Page ${index + 1}/${pages.length}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 31, 7.6, true, [0.48, 0.51, 0.56]);
+      strokeLine(MARGIN, PAGE_HEIGHT - 40, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 40, [0.88, 0.9, 0.93], 0.7);
+      drawText(`Conduct'Home • ${project.name}`, MARGIN, PAGE_HEIGHT - 29, 7.7, false, [0.49, 0.52, 0.57]);
+      drawRightText(`Page ${index + 1}/${pages.length}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 29, 7.7, true, [0.49, 0.52, 0.57]);
       page = previousPage;
     });
 
     const objectCount = 4 + pages.length * 2;
     const objects = new Array(objectCount + 1).fill('');
     objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-
     const pageObjectNumbers = pages.map((_, index) => 5 + index * 2);
     objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((value) => `${value} 0 R`).join(' ')}] /Count ${pages.length} >>`;
     objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
     objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
-
     pages.forEach((pdfPage, index) => {
       const pageObjectNumber = 5 + index * 2;
       const contentObjectNumber = pageObjectNumber + 1;
       const stream = pdfPage.commands.join('\n');
       const streamLength = new TextEncoder().encode(stream).length;
-
-      objects[pageObjectNumber] =
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfNumber(PAGE_WIDTH)} ${pdfNumber(PAGE_HEIGHT)}] ` +
-        `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
+      objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfNumber(PAGE_WIDTH)} ${pdfNumber(PAGE_HEIGHT)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
       objects[contentObjectNumber] = `<< /Length ${streamLength} >>\nstream\n${stream}\nendstream`;
     });
-
     const encoder = new TextEncoder();
     let pdf = '%PDF-1.4\n';
     const offsets = [0];
-
     for (let index = 1; index < objects.length; index += 1) {
       offsets[index] = encoder.encode(pdf).length;
       pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
     }
-
     const xrefOffset = encoder.encode(pdf).length;
     pdf += `xref\n0 ${objects.length}\n`;
     pdf += '0000000000 65535 f \n';
     for (let index = 1; index < objects.length; index += 1) {
       pdf += `${offsets[index].toString().padStart(10, '0')} 00000 n \n`;
     }
-
     pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
     return new Blob([encoder.encode(pdf)], { type: 'application/pdf' });
   };
