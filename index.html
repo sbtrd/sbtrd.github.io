@@ -772,6 +772,15 @@
   transform: rotate(-45deg);
 }
 
+
+/* =========================================================
+   V1.47 — tous les lots repliés au lancement
+   ========================================================= */
+.artisan-lot-section.ch-v144-collapsed > .artisan-compact-list,
+.artisan-lot-section.collapsed > .artisan-compact-list {
+  display: none !important;
+}
+
 </style>
 </head>
 <body>
@@ -1988,6 +1997,40 @@ Error generating stack: `+e.message+`
   observer.observe(document.documentElement, { childList: true, subtree: true });
   placeArrowsOnRight();
   setInterval(placeArrowsOnRight, 700);
+})();
+</script>
+<script>
+(() => {
+  const OLD_STORAGE_KEY = 'conduct-home-collapsed-lots-v1.44';
+
+  // Le réglage ne doit jamais survivre à un nouveau lancement du site.
+  localStorage.removeItem(OLD_STORAGE_KEY);
+
+  const collapseNewLotSections = () => {
+    document.querySelectorAll('.artisan-lot-section').forEach((section) => {
+      if (section.dataset.v147DefaultCollapsed === '1') return;
+
+      const list = section.querySelector(':scope > .artisan-compact-list');
+      const button = section.querySelector('.ch-v144-lot-toggle, .artisan-lot-toggle');
+      if (!list || !button) return;
+
+      section.dataset.v147DefaultCollapsed = '1';
+      section.classList.add('ch-v144-collapsed');
+
+      button.classList.add('collapsed');
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-label', 'Afficher les artisans du lot');
+
+      const arrow = button.querySelector('.artisan-collapse-arrow');
+      if (arrow) arrow.classList.add('collapsed');
+    });
+  };
+
+  const observer = new MutationObserver(collapseNewLotSections);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  collapseNewLotSections();
+  window.setInterval(collapseNewLotSections, 700);
 })();
 </script>
 </body>
