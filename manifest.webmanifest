@@ -1,0 +1,25 @@
+{
+  "name": "Conduct'Home - Pilotage chantier",
+  "short_name": "Conduct'Home",
+  "description": "Pilotage des chantiers, artisans, tâches et réunions.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#4a4d52",
+  "theme_color": "#4a4d52",
+  "lang": "fr-FR",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
