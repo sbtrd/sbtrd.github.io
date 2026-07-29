@@ -480,6 +480,154 @@
   }
 }
 
+
+/* =========================================================
+   V1.44 — Commandes arrondies + artisans rehiérarchisés
+   ========================================================= */
+.ch-order-modal,
+.orders-view,
+.orders-view .panel,
+.order-builder,
+.order-documents,
+.order-actions,
+.order-message {
+  border-radius: 18px !important;
+}
+
+.ch-order-modal {
+  overflow: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: #b7bcc5 transparent;
+}
+
+.ch-order-modal::-webkit-scrollbar,
+.orders-view::-webkit-scrollbar,
+.orders-view *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.ch-order-modal::-webkit-scrollbar-track,
+.orders-view::-webkit-scrollbar-track,
+.orders-view *::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.ch-order-modal::-webkit-scrollbar-thumb,
+.orders-view::-webkit-scrollbar-thumb,
+.orders-view *::-webkit-scrollbar-thumb {
+  min-height: 42px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: #b7bcc5;
+  background-clip: padding-box;
+}
+
+.ch-order-modal::-webkit-scrollbar-thumb:hover,
+.orders-view::-webkit-scrollbar-thumb:hover,
+.orders-view *::-webkit-scrollbar-thumb:hover {
+  background: #8f96a1;
+  background-clip: padding-box;
+}
+
+.artisan-lot-section {
+  border: 1px solid #dfe3e8 !important;
+  border-radius: 16px !important;
+  background: #f7f8fa !important;
+}
+
+.artisan-lot-header {
+  border-bottom: 0 !important;
+  background: #f1f3f5 !important;
+}
+
+.ch-v144-lot-toggle {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 9px;
+  background: #fff;
+  color: #5f6670;
+  font: 900 18px/1 inherit;
+  cursor: pointer;
+  transition: transform .18s ease, background .18s ease;
+}
+
+.ch-v144-lot-toggle:hover {
+  background: #e8ebef;
+}
+
+.ch-v144-lot-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+.artisan-lot-section.ch-v144-collapsed .artisan-lot-header {
+  border-radius: 16px !important;
+}
+
+.artisan-lot-section.ch-v144-collapsed .artisan-compact-list {
+  display: none !important;
+}
+
+.artisan-lot-section > .artisan-compact-list {
+  padding: 10px !important;
+  display: grid !important;
+  gap: 8px !important;
+  background: #fff !important;
+  border-top: 1px solid #e7e9ed !important;
+}
+
+.artisan-compact-row {
+  min-height: 72px !important;
+  border: 1px solid #e4e7eb !important;
+  border-radius: 13px !important;
+  background: #fff !important;
+  box-shadow: 0 3px 10px rgba(17,24,39,.04) !important;
+}
+
+.artisan-compact-row:hover {
+  border-color: #d3d7dd !important;
+  background: #fff !important;
+  box-shadow: 0 7px 18px rgba(17,24,39,.07) !important;
+}
+
+.artisan-compact-row .artisan-row-avatar {
+  border-radius: 50% !important;
+  background: #c51a2e !important;
+}
+
+.artisan-compact-row .artisan-row-main::before {
+  content: 'Entreprise';
+  display: block;
+  margin-bottom: 3px;
+  color: #9aa1ab;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .65px;
+}
+
+.artisan-compact-row .artisan-row-main strong {
+  color: #262a30 !important;
+  font-size: 12px !important;
+}
+
+.artisan-compact-row .artisan-row-main small {
+  color: #7b828c !important;
+}
+
+@media(max-width:720px) {
+  .artisan-compact-row .artisan-row-code,
+  .artisan-compact-row .artisan-row-action {
+    display: none !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1595,6 +1743,78 @@ Error generating stack: `+e.message+`
   observer.observe(document.documentElement, { childList: true, subtree: true });
   run();
   setInterval(run, 700);
+})();
+</script>
+<script>
+(() => {
+  const STORAGE_KEY = 'conduct-home-collapsed-lots-v1.44';
+
+  const getCollapsed = () => {
+    try {
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveCollapsed = (values) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
+  };
+
+  const getLotKey = (section) => {
+    const title = section.querySelector('.artisan-lot-header h2')?.textContent?.trim();
+    const code = section.querySelector('.artisan-lot-kicker')?.textContent?.trim();
+    return `${code || ''}::${title || ''}`;
+  };
+
+  const decorateLot = (section) => {
+    if (section.dataset.v144 === '1') return;
+    const header = section.querySelector('.artisan-lot-header');
+    const list = section.querySelector(':scope > .artisan-compact-list');
+    if (!header || !list) return;
+
+    section.dataset.v144 = '1';
+    const key = getLotKey(section);
+    const collapsed = getCollapsed().includes(key);
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `ch-v144-lot-toggle${collapsed ? ' collapsed' : ''}`;
+    button.setAttribute('aria-label', collapsed ? 'Afficher les artisans du lot' : 'Masquer les artisans du lot');
+    button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    button.textContent = '⌄';
+
+    const titleWrap = header.querySelector('.artisan-lot-title-wrap');
+    if (titleWrap) header.insertBefore(button, titleWrap);
+    else header.prepend(button);
+
+    if (collapsed) section.classList.add('ch-v144-collapsed');
+
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const isCollapsed = section.classList.toggle('ch-v144-collapsed');
+      button.classList.toggle('collapsed', isCollapsed);
+      button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      button.setAttribute('aria-label', isCollapsed ? 'Afficher les artisans du lot' : 'Masquer les artisans du lot');
+
+      const current = new Set(getCollapsed());
+      if (isCollapsed) current.add(key);
+      else current.delete(key);
+      saveCollapsed([...current]);
+    });
+  };
+
+  const run = () => {
+    document.querySelectorAll('.artisan-lot-section').forEach(decorateLot);
+  };
+
+  const observer = new MutationObserver(run);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  run();
+  setInterval(run, 800);
 })();
 </script>
 </body>
