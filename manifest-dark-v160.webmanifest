@@ -1,0 +1,38 @@
+{
+  "id": "./?app=conduct-home-v160",
+  "name": "Maisons ARLOGIS - Pilotage chantier",
+  "short_name": "Maisons ARLOGIS",
+  "description": "Pilotage des chantiers, artisans, tâches et réunions.",
+  "start_url": "./?app=conduct-home-v160",
+  "scope": "./",
+  "display": "standalone",
+  "lang": "fr-FR",
+  "background_color": "#0f1114",
+  "theme_color": "#0f1114",
+  "icons": [
+    {
+      "src": "shortcut-dark-v160-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "shortcut-dark-v160-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "shortcut-dark-v160-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "shortcut-dark-v160-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

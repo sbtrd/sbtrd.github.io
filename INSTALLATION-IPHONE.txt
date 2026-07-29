@@ -1,0 +1,12 @@
+CONDUCT’HOME V1.60 — ICÔNE IPHONE
+
+Le logo affiché dans l’application reste le logo ARLOGIS historique.
+Le logo carré blanc/noir est réservé au raccourci d’écran d’accueil.
+
+Pour forcer la nouvelle icône sur iPhone :
+1. Supprimer l’ancien raccourci Conduct’Home de l’écran d’accueil.
+2. Ouvrir le site déployé dans Safari.
+3. Vérifier que l’iPhone est dans le thème clair ou sombre souhaité.
+4. Partager > Sur l’écran d’accueil > Ajouter.
+
+L’icône est choisie au moment de la création du raccourci. iOS ne remplace pas automatiquement l’icône d’un raccourci déjà installé quand le thème change ensuite.

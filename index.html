@@ -1173,7 +1173,27 @@
 }
 
 </style>
-<meta id="theme-color" name="theme-color" content="#ffffff"><meta name="color-scheme" content="light dark"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link id="app-manifest" rel="manifest" href="manifest-light.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" sizes="32x32" href="favicon-dark-32.png" media="(prefers-color-scheme: dark)"><script>(()=>{const m=matchMedia('(prefers-color-scheme: dark)'),a=()=>{const d=m.matches;document.documentElement.dataset.theme=d?'dark':'light';document.querySelector('#theme-color')?.setAttribute('content',d?'#0f1114':'#ffffff');document.querySelector('#app-manifest')?.setAttribute('href',d?'manifest-dark.webmanifest':'manifest-light.webmanifest')};a();m.addEventListener?.('change',a)})()</script></head>
+<meta id="theme-color" name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maisons ARLOGIS">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link id="app-manifest" rel="manifest" href="manifest-v160.webmanifest?v=160">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-light-32.png?v=160" media="(prefers-color-scheme: light)">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-dark-32.png?v=160" media="(prefers-color-scheme: dark)">
+<script>
+(() => {
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const apply = () => {
+    const dark = media.matches;
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.querySelector('#theme-color')?.setAttribute('content', dark ? '#0f1114' : '#ffffff');
+    document.querySelector('#app-manifest')?.setAttribute('href', dark ? 'manifest-dark-v160.webmanifest?v=160' : 'manifest-light-v160.webmanifest?v=160');
+  };
+  apply();
+  media.addEventListener?.('change', apply);
+})();
+</script></head>
 <body>
 <script>
 (() => {
@@ -3642,11 +3662,7 @@ Error generating stack: `+e.message+`
     const dark = media.matches;
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     document.querySelector('#theme-color')?.setAttribute('content', dark ? '#0f1114' : '#ffffff');
-    document.querySelector('#app-manifest')?.setAttribute('href', dark ? 'manifest-dark.webmanifest' : 'manifest-light.webmanifest');
-    const logo = dark ? 'logo-arlogis-dark.png' : 'logo-arlogis-light.png';
-    document.querySelectorAll('.brand-logo-image, .auth-logo-wrap img').forEach((img) => {
-      if (img.getAttribute('src') !== logo) img.setAttribute('src', logo);
-    });
+    document.querySelector('#app-manifest')?.setAttribute('href', dark ? 'manifest-dark-v160.webmanifest?v=160' : 'manifest-light-v160.webmanifest?v=160');
   };
 
   const observer = new MutationObserver(apply);
