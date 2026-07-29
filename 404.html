@@ -708,6 +708,70 @@
   }
 }
 
+
+/* =========================================================
+   V1.46 — flèche de lot plus sobre et plus harmonieuse
+   ========================================================= */
+.artisan-lot-toggle,
+.ch-v144-lot-toggle {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  appearance: none;
+}
+
+.artisan-lot-toggle:hover,
+.ch-v144-lot-toggle:hover {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.artisan-lot-toggle:focus-visible,
+.ch-v144-lot-toggle:focus-visible {
+  outline: 2px solid rgba(197, 26, 46, .18);
+  outline-offset: 4px;
+  border-radius: 6px !important;
+}
+
+.artisan-collapse-arrow {
+  width: 18px !important;
+  height: 18px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+.artisan-collapse-arrow::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  display: block;
+  border-right: 2px solid #7b828c;
+  border-bottom: 2px solid #7b828c;
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform .18s ease, border-color .18s ease, opacity .18s ease;
+  opacity: .95;
+}
+
+.artisan-lot-toggle:hover .artisan-collapse-arrow::before,
+.ch-v144-lot-toggle:hover .artisan-collapse-arrow::before {
+  border-color: #4f5661;
+}
+
+.artisan-collapse-arrow.collapsed::before {
+  transform: rotate(-45deg);
+}
+
 </style>
 </head>
 <body>
