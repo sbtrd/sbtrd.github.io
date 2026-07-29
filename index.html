@@ -1072,6 +1072,118 @@
 <body>
 <script>
 (() => {
+  const FIREBASE_PROJECT_ID = 'arlogis-conduc-home';
+  const SESSION_KEY = 'conduct-home-firebase-rest-session-v1';
+  const PENDING_PREFIX = 'conduct-home-pending-cloud-sync-v1.50';
+  const nativeFetch = window.fetch.bind(window);
+  window.__conductHomeNativeFetchV150 = nativeFetch;
+  const nativeSetItem = Storage.prototype.setItem;
+
+  const getSession = () => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+    catch { return undefined; }
+  };
+
+  const getPendingKey = () => {
+    const session = getSession();
+    return session?.id ? `${PENDING_PREFIX}::${session.id}` : PENDING_PREFIX;
+  };
+
+  const stampWorkspaceJson = (value) => {
+    try {
+      const workspace = JSON.parse(value);
+      workspace.workspaceUpdatedAt = new Date().toISOString();
+      return JSON.stringify(workspace);
+    } catch {
+      return value;
+    }
+  };
+
+  Storage.prototype.setItem = function(key, value) {
+    if (this === localStorage && String(key).startsWith('conduct-home-workspace-v1.2-clean')) {
+      value = stampWorkspaceJson(String(value));
+    }
+    return nativeSetItem.call(this, key, value);
+  };
+
+  const isWorkspaceUrl = (url) =>
+    /\/documents\/users\/[^/]+\/workspace\/main(?:\?|$)/.test(url);
+
+  const toDirectUserUrl = (url) =>
+    url.replace(/\/documents\/users\/([^/]+)\/workspace\/main/, '/documents/users/$1');
+
+  const parseWorkspaceBody = (body) => {
+    try {
+      const payload = JSON.parse(String(body || '{}'));
+      const workspaceJson = payload?.fields?.workspaceJson?.stringValue;
+      if (!workspaceJson) return { body, workspace: undefined };
+
+      const stamped = stampWorkspaceJson(workspaceJson);
+      payload.fields.workspaceJson.stringValue = stamped;
+      payload.fields.updatedAt = { timestampValue: new Date().toISOString() };
+      return { body: JSON.stringify(payload), workspace: JSON.parse(stamped) };
+    } catch {
+      return { body, workspace: undefined };
+    }
+  };
+
+  const fakeSuccess = () => new Response('{}', {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  window.fetch = async (input, init = {}) => {
+    const originalUrl = typeof input === 'string' ? input : input?.url;
+    if (!originalUrl || !isWorkspaceUrl(originalUrl)) {
+      return nativeFetch(input, init);
+    }
+
+    const directUrl = toDirectUserUrl(originalUrl);
+    const method = String(init?.method || 'GET').toUpperCase();
+
+    if (method === 'GET') {
+      try {
+        const directResponse = await nativeFetch(directUrl, init);
+        if (directResponse.status !== 404) return directResponse;
+      } catch {}
+
+      return nativeFetch(input, init);
+    }
+
+    if (method === 'PATCH') {
+      const patched = parseWorkspaceBody(init?.body);
+      const directInit = { ...init, body: patched.body };
+
+      try {
+        const directResponse = await nativeFetch(directUrl, directInit);
+        if (directResponse.ok) {
+          localStorage.removeItem(getPendingKey());
+          return directResponse;
+        }
+      } catch {}
+
+      try {
+        const legacyResponse = await nativeFetch(input, directInit);
+        if (legacyResponse.ok) {
+          localStorage.removeItem(getPendingKey());
+          return legacyResponse;
+        }
+      } catch {}
+
+      if (patched.workspace) {
+        localStorage.setItem(getPendingKey(), JSON.stringify(patched.workspace));
+      }
+
+      // L'interface reste utilisable même si le cloud est momentanément indisponible.
+      return fakeSuccess();
+    }
+
+    return nativeFetch(input, init);
+  };
+})();
+</script>
+<script>
+(() => {
   const RESET_MARKER = 'conduct-home-browser-reset-v1.43';
   const RESET_QUERY = 'conducthome_reset_done';
   const url = new URL(location.href);
@@ -2321,7 +2433,7 @@ Error generating stack: `+e.message+`
 </script>
 <script>
 (() => {
-  const CHECKLIST = [{"id":"map","title":"01 — MAP / MISE AU POINT","stageId":"map","items":[{"id":"qc-map-01","label":"Plans, notice descriptive et options client cohérents","hint":"Vérifier les dernières versions, indices et éventuelles variantes.","critical":true},{"id":"qc-map-02","label":"Implantation des équipements et réservations validée","hint":"Cuisine, sanitaires, chauffage, prises, VMC, menuiseries et accès.","critical":true},{"id":"qc-map-03","label":"Choix de finitions et références clairement enregistrés","hint":"Coloris, modèles, sens de pose et prestations hors marché."},{"id":"qc-map-04","label":"Contraintes du terrain et accès chantier identifiés","hint":"Pente, réseaux, voisinage, stockage, grue, pompe et livraisons."},{"id":"qc-map-05","label":"Points en attente listés avec responsable et échéance","hint":"Aucun point bloquant ne doit rester sans pilote."},{"id":"qc-map-06","label":"Compte rendu MAP diffusé et archivé","hint":"Document daté, complet et partagé aux intervenants concernés."}]},{"id":"av_exchange","title":"02 — AVENANTS : ENVOI & RETOUR","stageId":"av_exchange","items":[{"id":"qc-av-01","label":"Liste des modifications client consolidée","hint":"Distinguer clairement ajout, suppression et modification."},{"id":"qc-av-02","label":"Incidences techniques et délais analysées","hint":"Vérifier les impacts sur plans, études, commandes et planning.","critical":true},{"id":"qc-av-03","label":"Montants, prestations et exclusions compréhensibles","hint":"Éviter les formulations ambiguës ou incomplètes."},{"id":"qc-av-04","label":"Avenant signé avant exécution des travaux","hint":"Aucune prestation supplémentaire sans validation formelle.","critical":true},{"id":"qc-av-05","label":"Plans et documents mis à jour après validation","hint":"Diffuser uniquement les versions en vigueur."}]},{"id":"mse_exchange","title":"03 — MISE EN SERVICE / ÉTUDES : ENVOI & RETOUR","stageId":"mse_exchange","items":[{"id":"qc-mse-01","label":"Dossiers transmis complets aux bureaux d’études","hint":"Plans, notice, étude de sol, choix techniques et données client."},{"id":"qc-mse-02","label":"Retours d’études reçus et cohérents avec le projet","hint":"Structure, thermique, fluides, assainissement et plans fabricants.","critical":true},{"id":"qc-mse-03","label":"Incompatibilités entre études repérées et arbitrées","hint":"Réservations, hauteurs, réseaux, équipements et passages techniques.","critical":true},{"id":"qc-mse-04","label":"Versions validées diffusées aux entreprises concernées","hint":"Retirer les anciennes versions des dossiers chantier."}]},{"id":"order_sending","title":"04 — ENVOI DES COMMANDES","stageId":"order_sending","items":[{"id":"qc-orders-01","label":"Entreprise, adresse de commande et interlocuteur vérifiés","hint":"Utiliser l’adresse renseignée dans la fiche artisan."},{"id":"qc-orders-02","label":"Plans, métrés et pièces techniques joints à la commande","hint":"Joindre uniquement les documents utiles et à jour.","critical":true},{"id":"qc-orders-03","label":"Références, quantités, coloris et délais confirmés","hint":"Faire apparaître les variantes et accessoires nécessaires."},{"id":"qc-orders-04","label":"Date souhaitée et contraintes de livraison indiquées","hint":"Accès, stockage, moyen de déchargement et contact chantier."},{"id":"qc-orders-05","label":"Accusé de réception ou confirmation fournisseur obtenu","hint":"Relancer immédiatement en cas d’écart ou de délai non confirmé."}]},{"id":"opening","title":"05 — OUVERTURE / TERRASSEMENT","stageId":"opening","items":[{"id":"qc-opening-01","label":"Implantation conforme au plan masse et aux limites","hint":"Axes, retraits, orientation, dimensions et repères pérennes.","critical":true},{"id":"qc-opening-02","label":"Altimétrie de référence contrôlée avant terrassement","hint":"Niveau fini, niveau plancher et évacuation des eaux.","critical":true},{"id":"qc-opening-03","label":"Décapage de la terre végétale correctement réalisé","hint":"Stockage séparé et absence de terre organique sous l’ouvrage."},{"id":"qc-opening-04","label":"Fouilles conformes en largeur, profondeur et portance","hint":"Fond propre, homogène, non remanié et sans eau stagnante.","critical":true},{"id":"qc-opening-05","label":"Accès, sécurité et stabilité des terrassements maîtrisés","hint":"Talutage, balisage, circulation engins et protection des tiers."},{"id":"qc-opening-06","label":"Photos et relevés avant bétonnage archivés","hint":"Implantation, fond de fouilles et points singuliers."}]},{"id":"foundations","title":"06 — FONDATIONS","stageId":"foundations","items":[{"id":"qc-foundations-01","label":"Fond de fouille propre et conforme à l’étude de sol","hint":"Pas de terre meuble, boue, eau ou surprofondeur non traitée.","critical":true},{"id":"qc-foundations-02","label":"Dimensions et niveaux des semelles contrôlés","hint":"Largeur, hauteur, redans et profondeur hors gel selon dossier.","critical":true},{"id":"qc-foundations-03","label":"Armatures conformes, calées et correctement recouvertes","hint":"Position, continuité, recouvrements, attentes et liaisons.","critical":true},{"id":"qc-foundations-04","label":"Passages de réseaux et attentes anticipés","hint":"Éviter tout percement ultérieur non prévu."},{"id":"qc-foundations-05","label":"Béton identifié, coulé sans ségrégation et correctement réparti","hint":"Bon de livraison, conditions météo et continuité du coulage."},{"id":"qc-foundations-06","label":"Cotes et photos avant recouvrement enregistrées","hint":"Traçabilité des armatures, attentes et points singuliers."}]},{"id":"vs_basement","title":"07 — VIDE SANITAIRE / SOUS-SOL","stageId":"vs_basement","items":[{"id":"qc-vs-01","label":"Implantation, dimensions et équerrage du soubassement","hint":"Contrôler diagonales, axes et épaisseurs.","critical":true},{"id":"qc-vs-02","label":"Chaînages, poteaux et attentes correctement positionnés","hint":"Continuité des armatures et liaison aux fondations.","critical":true},{"id":"qc-vs-03","label":"Arase étanche et coupure de capillarité réalisées","hint":"Continuité, niveau et absence de rupture.","critical":true},{"id":"qc-vs-04","label":"Ventilation du vide sanitaire prévue et non obstruée","hint":"Répartition des entrées d’air et protection contre les nuisibles."},{"id":"qc-vs-05","label":"Accès au vide sanitaire praticable","hint":"Trappe, hauteur utile et circulation vers les réseaux."},{"id":"qc-vs-06","label":"Étanchéité et drainage du sous-sol réalisés si prévus","hint":"Protection verticale, drain, exutoire et remblai adapté.","critical":true}]},{"id":"tubing","title":"08 — TUBAGE / RÉSEAUX SOUS DALLE","stageId":"tubing","items":[{"id":"qc-tubing-01","label":"Position des évacuations conforme aux plans","hint":"Cuisine, sanitaires, buanderie, garage et attentes extérieures.","critical":true},{"id":"qc-tubing-02","label":"Pentes, diamètres et sens d’écoulement vérifiés","hint":"Absence de contre-pente et raccords accessibles.","critical":true},{"id":"qc-tubing-03","label":"Fourreaux et gaines identifiés, protégés et obturés","hint":"Électricité, télécom, eau, chauffage et équipements futurs."},{"id":"qc-tubing-04","label":"Traversées de murs ou planchers correctement réservées","hint":"Protection mécanique et traitement des points d’étanchéité."},{"id":"qc-tubing-05","label":"Câblette ou prise de terre mise en place","hint":"Continuité et sortie accessible avant recouvrement.","critical":true},{"id":"qc-tubing-06","label":"Essais d’écoulement et photos avant fermeture réalisés","hint":"Tracer précisément les réseaux cachés."}]},{"id":"floor_slab_pour","title":"09 — COULAGE DU PLANCHER","stageId":"floor_slab_pour","items":[{"id":"qc-floor-01","label":"Type de plancher et calepinage conformes au plan fabricant","hint":"Poutrelles, entrevous, trémies, chevêtres et appuis.","critical":true},{"id":"qc-floor-02","label":"Étaiement stable, complet et correctement réglé","hint":"Respect des files, appuis et délais de maintien.","critical":true},{"id":"qc-floor-03","label":"Armatures, treillis et chaînages correctement positionnés","hint":"Recouvrements, cales, renforts et liaisons périphériques.","critical":true},{"id":"qc-floor-04","label":"Réservations, trémies et attentes contrôlées","hint":"Escalier, gaines, conduits, réseaux et niveaux finis."},{"id":"qc-floor-05","label":"Niveau, épaisseur et planéité avant coulage vérifiés","hint":"Repères de niveau visibles et cohérents."},{"id":"qc-floor-06","label":"Bétonnage, vibration et cure correctement réalisés","hint":"Limiter ségrégation, dessiccation rapide et surcharge locale."}]},{"id":"elevations","title":"10 — ÉLÉVATIONS","stageId":"elevations","items":[{"id":"qc-elevations-01","label":"Dimensions, aplomb, niveau et équerrage des murs","hint":"Contrôler régulièrement pendant l’élévation.","critical":true},{"id":"qc-elevations-02","label":"Ouvertures conformes en position et dimensions","hint":"Largeur, hauteur, allège, linteau et réservation de pose.","critical":true},{"id":"qc-elevations-03","label":"Chaînages horizontaux et verticaux continus","hint":"Angles, refends, baies et liaisons avec planchers.","critical":true},{"id":"qc-elevations-04","label":"Appuis, seuils et coffres prévus aux bonnes altitudes","hint":"Prendre en compte sols finis et type de menuiserie."},{"id":"qc-elevations-05","label":"Réservations techniques et traversées anticipées","hint":"VMC, évacuations, conduits, tableaux et équipements."},{"id":"qc-elevations-06","label":"Arase supérieure prête à recevoir la charpente","hint":"Niveau, planéité, ancrages et dimensions."}]},{"id":"frame_delivery","title":"11 — LIVRAISON CHARPENTE","stageId":"frame_delivery","items":[{"id":"qc-frame-delivery-01","label":"Bon de livraison conforme à la commande","hint":"Références, quantités, accessoires et plans fabricant."},{"id":"qc-frame-delivery-02","label":"Éléments identifiés, complets et sans dégradation","hint":"Signaler immédiatement casse, humidité ou déformation.","critical":true},{"id":"qc-frame-delivery-03","label":"Stockage à plat, ventilé et protégé du sol","hint":"Éviter déformation, humidité et mélange des éléments."},{"id":"qc-frame-delivery-04","label":"Moyens de levage et zone de pose sécurisés","hint":"Accès grue, stabilité du terrain et balisage."}]},{"id":"frame","title":"12 — CHARPENTE","stageId":"frame","items":[{"id":"qc-frame-01","label":"Pose conforme au plan de charpente fabricant","hint":"Ordre, orientation, entraxes, appuis et repérage.","critical":true},{"id":"qc-frame-02","label":"Ancrages, fixations et liaisons correctement réalisés","hint":"Sabots, équerres, scellements et fixations spécifiques.","critical":true},{"id":"qc-frame-03","label":"Contreventements, antiflambements et entretoises complets","hint":"Aucun élément du plan fabricant ne doit manquer.","critical":true},{"id":"qc-frame-04","label":"Aplomb, alignement et déformations contrôlés","hint":"Fermettes, pannes, chevrons et débords."},{"id":"qc-frame-05","label":"Trémies et chevêtres conformes aux équipements","hint":"Conduit, VMC, fenêtre de toit, trappe et accès."},{"id":"qc-frame-06","label":"Bois protégés de l’humidité avant couverture","hint":"Évacuer les eaux et éviter les stagnations."}]},{"id":"roof","title":"13 — COUVERTURE","stageId":"roof","items":[{"id":"qc-roof-01","label":"Écran sous-toiture continu et correctement raccordé","hint":"Recouvrements, rives, pénétrations et évacuation vers égout.","critical":true},{"id":"qc-roof-02","label":"Liteaux, contre-liteaux et ventilation sous couverture","hint":"Entrées/sorties d’air et continuité de la lame ventilée."},{"id":"qc-roof-03","label":"Calepinage, recouvrements et fixation des éléments","hint":"Rives, égouts, faîtages, arêtiers et zones exposées.","critical":true},{"id":"qc-roof-04","label":"Noues et pénétrations traitées sans point de fuite","hint":"Conduits, sorties, fenêtres de toit et raccords.","critical":true},{"id":"qc-roof-05","label":"Tuiles à douille et sorties positionnées selon plans","hint":"VMC, ventilation primaire et autres équipements."},{"id":"qc-roof-06","label":"Aspect final homogène et éléments endommagés remplacés","hint":"Alignement, teinte, coupes et propreté."}]},{"id":"zinc","title":"14 — ZINGUERIE","stageId":"zinc","items":[{"id":"qc-zinc-01","label":"Gouttières posées avec pente et supports réguliers","hint":"Écoulement naturel sans contre-pente ni déformation."},{"id":"qc-zinc-02","label":"Naissances, descentes et raccords étanches","hint":"Assemblages, dilatation et fixation.","critical":true},{"id":"qc-zinc-03","label":"Solins, abergements et couvertines continus","hint":"Raccords avec murs, conduits et équipements.","critical":true},{"id":"qc-zinc-04","label":"Rejets d’eau éloignés des façades et fondations","hint":"Raccordement provisoire ou définitif des eaux pluviales."},{"id":"qc-zinc-05","label":"Essai visuel d’écoulement réalisé","hint":"Absence de fuite, débordement ou stagnation."}]},{"id":"thresholds","title":"15 — POSE DES SEUILS ET APPUIS","stageId":"thresholds","items":[{"id":"qc-thresholds-01","label":"Références, dimensions et teintes conformes","hint":"Comparer à la MAP et aux menuiseries commandées."},{"id":"qc-thresholds-02","label":"Altimétrie compatible avec sols finis et accessibilité","hint":"Portes, baies, terrasses et niveaux intérieurs.","critical":true},{"id":"qc-thresholds-03","label":"Pente, rejingot et évacuation d’eau corrects","hint":"Éviter toute stagnation ou retour d’eau.","critical":true},{"id":"qc-thresholds-04","label":"Scellement stable et absence de fissure ou éclat","hint":"Protection jusqu’à la pose des menuiseries."},{"id":"qc-thresholds-05","label":"Largeurs de tableaux compatibles avec la pose","hint":"Contrôler les jeux et les réservations périphériques."}]},{"id":"pre_backfill","title":"16 — PRÉ-REMBLAIS","stageId":"pre_backfill","items":[{"id":"qc-prebackfill-01","label":"Étanchéité et protections des soubassements terminées","hint":"Aucune zone ne doit être remblayée avant contrôle.","critical":true},{"id":"qc-prebackfill-02","label":"Réseaux enterrés contrôlés et photographiés","hint":"Position, pente, profondeur, protection et repérage.","critical":true},{"id":"qc-prebackfill-03","label":"Matériau de remblai adapté et exempt de blocs agressifs","hint":"Protection des murs, drains et canalisations."},{"id":"qc-prebackfill-04","label":"Remblaiement réalisé par couches sans choc sur l’ouvrage","hint":"Compactage maîtrisé à proximité des murs."},{"id":"qc-prebackfill-05","label":"Pentes provisoires éloignent les eaux de la maison","hint":"Éviter les poches d’eau contre les façades."}]},{"id":"ext_joinery_delivery","title":"17 — LIVRAISON MENUISERIES EXTÉRIEURES","stageId":"ext_joinery_delivery","items":[{"id":"qc-mext-delivery-01","label":"Quantités, dimensions, sens et références vérifiés","hint":"Comparer le bordereau, les plans et les repères de baies.","critical":true},{"id":"qc-mext-delivery-02","label":"Coloris, vitrages et accessoires conformes","hint":"Poignées, volets, grilles, tapées et seuils."},{"id":"qc-mext-delivery-03","label":"Absence de choc, rayure, casse ou déformation","hint":"Émettre des réserves précises sur le bon de livraison."},{"id":"qc-mext-delivery-04","label":"Stockage vertical, stable, sec et protégé","hint":"Identifier chaque élément par baie."}]},{"id":"ext_joinery","title":"18 — MENUISERIES EXTÉRIEURES","stageId":"ext_joinery","items":[{"id":"qc-mext-01","label":"Support, dimensions de baies et niveaux contrôlés","hint":"Compatibilité avec seuils, appuis et tapées.","critical":true},{"id":"qc-mext-02","label":"Pose d’aplomb, de niveau et sans déformation","hint":"Jeux réguliers et fonctionnement sans contrainte.","critical":true},{"id":"qc-mext-03","label":"Fixations adaptées et correctement réparties","hint":"Aucune fixation insuffisante ou dans une zone fragile."},{"id":"qc-mext-04","label":"Étanchéité périphérique continue","hint":"Traitement intérieur, extérieur, angles et appuis.","critical":true},{"id":"qc-mext-05","label":"Ouvrants, serrures et volets testés","hint":"Ouverture, fermeture, réglage, fins de course et commandes."},{"id":"qc-mext-06","label":"Protections conservées et menuiseries sans dégradation","hint":"Nettoyer les rails et protéger jusqu’aux finitions."}]},{"id":"interior_joinery_delivery","title":"19 — LIVRAISON MENUISERIES INTÉRIEURES","stageId":"interior_joinery_delivery","items":[{"id":"qc-mint-delivery-01","label":"Quantités, dimensions et sens d’ouverture vérifiés","hint":"Portes, huisseries, blocs-portes et équipements."},{"id":"qc-mint-delivery-02","label":"Modèles, finitions et quincailleries conformes","hint":"Poignées, serrures, butées et accessoires."},{"id":"qc-mint-delivery-03","label":"Éléments secs, droits et sans choc","hint":"Réserves sur livraison si besoin."},{"id":"qc-mint-delivery-04","label":"Stockage à plat ou vertical selon fabricant","hint":"Local sec, ventilé et protégé des travaux humides."}]},{"id":"drywall_delivery","title":"20 — LIVRAISON PLÂTRERIE","stageId":"drywall_delivery","items":[{"id":"qc-placo-delivery-01","label":"Types et quantités de plaques conformes","hint":"Standard, hydrofuge, feu, acoustique et épaisseurs."},{"id":"qc-placo-delivery-02","label":"Ossatures, isolants et accessoires complets","hint":"Rails, montants, suspentes, bandes, vis et renforts."},{"id":"qc-placo-delivery-03","label":"Stockage au sec, à plat et sans déformation","hint":"Protection contre humidité, chocs et circulation."},{"id":"qc-placo-delivery-04","label":"Bâtiment suffisamment hors d’eau et ventilé","hint":"Ne pas enfermer l’humidité dans les ouvrages."}]},{"id":"drywall_first","title":"21 — PLÂTRERIE 1ÈRE INTERVENTION","stageId":"drywall_first","items":[{"id":"qc-placo1-01","label":"Implantation des cloisons conforme aux plans","hint":"Dimensions des pièces, dégagements et réservations.","critical":true},{"id":"qc-placo1-02","label":"Ossatures droites, stables et correctement fixées","hint":"Entraxes, doublages, plafonds et points singuliers."},{"id":"qc-placo1-03","label":"Renforts prévus pour équipements et charges","hint":"Meubles, sanitaires, mains courantes, radiateurs et TV."},{"id":"qc-placo1-04","label":"Type de plaque adapté à chaque local","hint":"Humidité, feu, acoustique et résistance mécanique."},{"id":"qc-placo1-05","label":"Isolation continue, jointive et sans tassement","hint":"Traitement des jonctions et absence de vide."},{"id":"qc-placo1-06","label":"Réservations techniques coordonnées avec les autres lots","hint":"Électricité, plomberie, VMC, chauffage et menuiseries."}]},{"id":"electrical_octopus_delivery","title":"22 — LIVRAISON PIEUVRE ÉLECTRIQUE","stageId":"electrical_octopus_delivery","items":[{"id":"qc-elec-pieuvre-01","label":"Repérage de la pieuvre conforme au plan électrique","hint":"Chaque départ doit être identifié et lisible."},{"id":"qc-elec-pieuvre-02","label":"Longueurs, sections et accessoires contrôlés","hint":"Comparer au dossier technique et aux options."},{"id":"qc-elec-pieuvre-03","label":"Aucune gaine écrasée, coupée ou endommagée","hint":"Réserves immédiates en cas de défaut."},{"id":"qc-elec-pieuvre-04","label":"Stockage protégé de l’humidité et des chocs","hint":"Conserver le repérage jusqu’à la pose."}]},{"id":"electrical_first","title":"23 — ÉLECTRICITÉ 1ÈRE INTERVENTION","stageId":"electrical_first","items":[{"id":"qc-elec1-01","label":"Implantation des appareillages conforme aux plans","hint":"Prises, interrupteurs, luminaires, tableau et équipements.","critical":true},{"id":"qc-elec1-02","label":"Hauteurs et alignements cohérents dans chaque pièce","hint":"Tenir compte des meubles, crédences et équipements."},{"id":"qc-elec1-03","label":"Gaines fixées sans écrasement ni courbure excessive","hint":"Passages protégés et accessibles avant fermeture."},{"id":"qc-elec1-04","label":"Séparation des réseaux et repérage des circuits","hint":"Courants forts, faibles, communication et automatismes."},{"id":"qc-elec1-05","label":"Liaison équipotentielle et terre prévues","hint":"Continuité vers tableau et locaux concernés.","critical":true},{"id":"qc-elec1-06","label":"Photos des réseaux avant fermeture archivées","hint":"Vue générale et repérage des passages cachés."}]},{"id":"plumbing_first","title":"24 — PLOMBERIE 1ÈRE INTERVENTION","stageId":"plumbing_first","items":[{"id":"qc-plumb1-01","label":"Implantation des alimentations et évacuations conforme","hint":"Cuisine, sanitaires, buanderie et équipements techniques.","critical":true},{"id":"qc-plumb1-02","label":"Diamètres, pentes et ventilation des évacuations vérifiés","hint":"Éviter contre-pentes, siphonnage et raccords inaccessibles.","critical":true},{"id":"qc-plumb1-03","label":"Canalisations fixées, protégées et calorifugées si nécessaire","hint":"Traversées, dilatation et protection mécanique."},{"id":"qc-plumb1-04","label":"Attentes correctement bouchonnées et repérées","hint":"Prévenir pollution, erreur et détérioration."},{"id":"qc-plumb1-05","label":"Essai d’étanchéité ou mise en pression réalisé","hint":"Tracer la date et les éventuelles corrections.","critical":true},{"id":"qc-plumb1-06","label":"Photos avant fermeture archivées","hint":"Réseaux dans doublages, cloisons et planchers."}]},{"id":"drywall_second","title":"25 — PLÂTRERIE 2ÈME INTERVENTION","stageId":"drywall_second","items":[{"id":"qc-placo2-01","label":"Réseaux contrôlés avant fermeture des parois","hint":"Aucun oubli d’alimentation, évacuation, gaine ou renfort.","critical":true},{"id":"qc-placo2-02","label":"Isolation et membranes continues avant fermeture","hint":"Jonctions, pénétrations et points singuliers.","critical":true},{"id":"qc-placo2-03","label":"Plaques correctement vissées et joints décalés","hint":"Pas de bord cassé, vis saillante ou fixation manquante."},{"id":"qc-placo2-04","label":"Découpes autour des boîtes et réseaux propres","hint":"Jeux réduits et rebouchages adaptés."},{"id":"qc-placo2-05","label":"Planéité, aplomb et équerrage des surfaces","hint":"Contrôle des angles, tableaux et raccords plafonds."}]},{"id":"joints","title":"26 — BANDES ET ENDUITS","stageId":"joints","items":[{"id":"qc-joints-01","label":"Bandes continues, marouflées et sans bulle","hint":"Joints courants, angles entrants et sortants."},{"id":"qc-joints-02","label":"Nombre de passes et temps de séchage respectés","hint":"Support sec avant ponçage et finition."},{"id":"qc-joints-03","label":"Têtes de vis et reprises correctement enduites","hint":"Aucune surépaisseur ou manque visible."},{"id":"qc-joints-04","label":"Angles, tableaux et raccords réguliers","hint":"Profilés, arêtes et jonctions propres."},{"id":"qc-joints-05","label":"Surface prête à recevoir la finition","hint":"Ponçage, dépoussiérage et absence de défaut rasant."}]},{"id":"electrical_second","title":"27 — ÉLECTRICITÉ 2ÈME INTERVENTION / VMC","stageId":"electrical_second","items":[{"id":"qc-elec2-01","label":"Tableau équipé, repéré et propre","hint":"Circuits, protections, réserve et documents de repérage.","critical":true},{"id":"qc-elec2-02","label":"Appareillages alignés, fixés et conformes aux choix","hint":"Plaques, commandes, prises et équipements spécifiques."},{"id":"qc-elec2-03","label":"Tests de fonctionnement réalisés sur chaque circuit","hint":"Éclairage, prises, commandes, volets et équipements.","critical":true},{"id":"qc-elec2-04","label":"Bouches VMC posées aux bons emplacements","hint":"Type de bouche, accessibilité et absence d’obstruction."},{"id":"qc-elec2-05","label":"Réseau VMC continu, fixé et non écrasé","hint":"Rejets extérieurs, condensats et accessibilité du caisson.","critical":true},{"id":"qc-elec2-06","label":"Documents et attestation électrique disponibles","hint":"Conserver schémas, notices et justificatifs."}]},{"id":"plumbing_second","title":"28 — PLOMBERIE 2ÈME INTERVENTION","stageId":"plumbing_second","items":[{"id":"qc-plumb2-01","label":"Robinets d’arrêt et nourrices accessibles et repérés","hint":"Accès maintenance sans dépose destructive."},{"id":"qc-plumb2-02","label":"Raccordements propres, stables et sans contrainte","hint":"Alimentations, évacuations et équipements."},{"id":"qc-plumb2-03","label":"Essais d’étanchéité et d’écoulement réalisés","hint":"Contrôle de chaque point d’eau et évacuation.","critical":true},{"id":"qc-plumb2-04","label":"Débits, pression et températures cohérents","hint":"Vérifier absence de bruit ou coup de bélier."},{"id":"qc-plumb2-05","label":"Joints et traversées terminés proprement","hint":"Rosaces, silicone et protection des parois."}]},{"id":"underfloor_heating","title":"29 — PLANCHER CHAUFFANT","stageId":"underfloor_heating","items":[{"id":"qc-ufh-01","label":"Support propre, sec et plan avant pose","hint":"Aucun gravat ni point dur sous isolant."},{"id":"qc-ufh-02","label":"Isolant de sol continu et bandes périphériques posées","hint":"Traitement des jonctions, seuils et passages.","critical":true},{"id":"qc-ufh-03","label":"Circuits conformes au plan et correctement fixés","hint":"Pas, longueurs, zones interdites et rayons de courbure.","critical":true},{"id":"qc-ufh-04","label":"Collecteurs accessibles, repérés et équipés","hint":"Correspondance des boucles et réglages."},{"id":"qc-ufh-05","label":"Mise en pression maintenue pendant le coulage","hint":"Contrôle de pression avant et après chape.","critical":true},{"id":"qc-ufh-06","label":"Photos et plan de recollement archivés","hint":"Repérer précisément les circuits avant recouvrement."}]},{"id":"insulation_delivery","title":"30 — LIVRAISON ISOLANT","stageId":"insulation_delivery","items":[{"id":"qc-insul-delivery-01","label":"Références, épaisseurs et résistances thermiques conformes","hint":"Comparer au dossier thermique et à la notice.","critical":true},{"id":"qc-insul-delivery-02","label":"Quantités et accessoires suffisants","hint":"Membranes, adhésifs, manchettes et suspentes."},{"id":"qc-insul-delivery-03","label":"Produits secs, emballages intacts et identifiés","hint":"Refuser les matériaux mouillés ou dégradés."},{"id":"qc-insul-delivery-04","label":"Stockage sec, ventilé et protégé","hint":"Éviter tassement, écrasement et pollution."}]},{"id":"insulation_installation","title":"31 — POSE ISOLANT","stageId":"insulation_installation","items":[{"id":"qc-insul-install-01","label":"Épaisseur et continuité de l’isolant contrôlées","hint":"Absence de vide, tassement ou compression excessive.","critical":true},{"id":"qc-insul-install-02","label":"Découpes ajustées autour des réseaux et ossatures","hint":"Éviter les ponts thermiques et passages d’air."},{"id":"qc-insul-install-03","label":"Membrane d’étanchéité à l’air continue","hint":"Recouvrements, adhésifs, raccords périphériques et pénétrations.","critical":true},{"id":"qc-insul-install-04","label":"Manchettes et traversées techniques étanchées","hint":"Gaines, conduits, câbles et éléments de structure."},{"id":"qc-insul-install-05","label":"Contrôle photographique avant fermeture","hint":"Conserver les preuves des zones cachées."}]},{"id":"liquid_screed","title":"32 — CHAPE LIQUIDE","stageId":"liquid_screed","items":[{"id":"qc-screed-01","label":"Support préparé, propre et étanche aux fuites de laitance","hint":"Reprises, passages et périphéries traités."},{"id":"qc-screed-02","label":"Bandes périphériques et joints prévus correctement","hint":"Désolidarisation, fractionnement et seuils.","critical":true},{"id":"qc-screed-03","label":"Repères de niveau et épaisseurs vérifiés","hint":"Compatibilité avec portes, carrelage et niveaux finis.","critical":true},{"id":"qc-screed-04","label":"Réseaux protégés et plancher chauffant sous pression","hint":"Aucun déplacement ni fuite pendant le coulage."},{"id":"qc-screed-05","label":"Coulage homogène et surface sans défaut majeur","hint":"Planéité, fissure, ségrégation et absence de zone creuse."},{"id":"qc-screed-06","label":"Séchage, ventilation et mise en chauffe documentés","hint":"Respecter les consignes avant revêtements.","critical":true}]},{"id":"attic_insulation","title":"33 — ISOLATION DES COMBLES","stageId":"attic_insulation","items":[{"id":"qc-attic-01","label":"Support et plafond prêts avant soufflage ou déroulage","hint":"Étanchéité à l’air et réseaux terminés."},{"id":"qc-attic-02","label":"Épaisseur et résistance thermique conformes","hint":"Repères de hauteur visibles et fiche chantier disponible.","critical":true},{"id":"qc-attic-03","label":"Isolation homogène jusque dans les zones difficiles","hint":"Rives, trappes, pieds de fermettes et angles."},{"id":"qc-attic-04","label":"Distances de sécurité autour des sources chaudes","hint":"Conduits, spots et équipements selon systèmes prévus.","critical":true},{"id":"qc-attic-05","label":"Ventilation de couverture non obstruée","hint":"Déflecteurs ou arrêts d’isolant aux égouts."},{"id":"qc-attic-06","label":"Trappe isolée, jointive et accessible","hint":"Protection contre chute d’isolant et passage d’air."}]},{"id":"sanitary_delivery","title":"34 — LIVRAISON SANITAIRES","stageId":"sanitary_delivery","items":[{"id":"qc-san-delivery-01","label":"Références, coloris et quantités conformes","hint":"Comparer aux choix client et à la commande."},{"id":"qc-san-delivery-02","label":"Dimensions compatibles avec les réservations","hint":"Receveurs, meubles, WC, baignoires et robinetterie."},{"id":"qc-san-delivery-03","label":"Aucune casse, rayure ou pièce manquante","hint":"Vérifier immédiatement les colis sensibles."},{"id":"qc-san-delivery-04","label":"Stockage protégé, identifié et sécurisé","hint":"Éviter la manutention inutile et les chocs."}]},{"id":"sanitary","title":"35 — SANITAIRES","stageId":"sanitary","items":[{"id":"qc-sanitary-01","label":"Implantation et hauteur des appareils conformes","hint":"Plans, usage, accessibilité et alignements."},{"id":"qc-sanitary-02","label":"Fixations stables et supports adaptés","hint":"Meubles, vasques, WC, receveurs et baignoires."},{"id":"qc-sanitary-03","label":"Étanchéité périphérique et sous équipements terminée","hint":"Silicones, raccords, parois et zones exposées.","critical":true},{"id":"qc-sanitary-04","label":"Chaque appareil testé en eau et en évacuation","hint":"Fuites, débit, vidage, siphon et débordement.","critical":true},{"id":"qc-sanitary-05","label":"Robinetterie réglée et eau chaude correctement distribuée","hint":"Sens chaud/froid, température et stabilité."},{"id":"qc-sanitary-06","label":"Appareils propres, protégés et sans dégradation","hint":"Retirer les protections seulement au bon moment."}]},{"id":"tile_delivery","title":"36 — LIVRAISON CARRELAGE","stageId":"tile_delivery","items":[{"id":"qc-tile-delivery-01","label":"Références, formats, teintes et calibres conformes","hint":"Comparer aux choix et vérifier les bains/nuances."},{"id":"qc-tile-delivery-02","label":"Quantités suffisantes avec marge prévue","hint":"Inclure plinthes, profils, découpes et réserve client."},{"id":"qc-tile-delivery-03","label":"Colles, joints et systèmes d’étanchéité compatibles","hint":"Support, local, format et usage."},{"id":"qc-tile-delivery-04","label":"Palettes protégées et carreaux sans casse","hint":"Stockage sec et stable."}]},{"id":"tile_installation","title":"37 — POSE CARRELAGE / FAÏENCE","stageId":"tile_installation","items":[{"id":"qc-tile-01","label":"Support sec, propre, plan et compatible","hint":"Contrôle avant primaire, colle ou étanchéité.","critical":true},{"id":"qc-tile-02","label":"Étanchéité des zones humides réalisée avant pose","hint":"Angles, relevés, traversées et raccords.","critical":true},{"id":"qc-tile-03","label":"Calepinage validé et coupes équilibrées","hint":"Axes, seuils, alignement faïence et équipements."},{"id":"qc-tile-04","label":"Planéité, alignement et largeur de joints réguliers","hint":"Absence de ressaut gênant ou carreau creux."},{"id":"qc-tile-05","label":"Joints périphériques et fractionnements respectés","hint":"Désolidarisation et continuité aux seuils.","critical":true},{"id":"qc-tile-06","label":"Silicones, profils et finitions propres","hint":"Angles, baignoire, douche, plinthes et seuils."}]},{"id":"interior_joinery_installation","title":"38 — POSE MENUISERIES INTÉRIEURES","stageId":"interior_joinery_installation","items":[{"id":"qc-mint-01","label":"Huisseries d’aplomb, de niveau et bien fixées","hint":"Jeux réguliers et absence de déformation."},{"id":"qc-mint-02","label":"Sens d’ouverture et modèles conformes aux plans","hint":"Vérifier chaque porte et équipement."},{"id":"qc-mint-03","label":"Jeu sous portes compatible avec ventilation et sols finis","hint":"Éviter frottements et défaut de transfert d’air."},{"id":"qc-mint-04","label":"Serrures, poignées et butées fonctionnent correctement","hint":"Réglage, fixation et cohérence des finitions."},{"id":"qc-mint-05","label":"Habillages, couvre-joints et plinthes terminés proprement","hint":"Coupes, raccords et pointes rebouchées."},{"id":"qc-mint-06","label":"Éléments sans choc, rayure ou éclat","hint":"Protection maintenue jusqu’à la réception."}]},{"id":"painting","title":"39 — PEINTURE","stageId":"painting","items":[{"id":"qc-paint-01","label":"Supports secs, dépoussiérés et correctement préparés","hint":"Reprises, ponçage, impression et protection des ouvrages."},{"id":"qc-paint-02","label":"Teintes et niveaux de finition conformes aux choix","hint":"Murs, plafonds, boiseries et pièces spécifiques."},{"id":"qc-paint-03","label":"Couverture homogène sans trace ni reprise visible","hint":"Contrôle en lumière naturelle et lumière rasante."},{"id":"qc-paint-04","label":"Angles, découpes et raccords nets","hint":"Menuiseries, appareillages, plafonds et plinthes."},{"id":"qc-paint-05","label":"Protections retirées sans dégradation","hint":"Nettoyer coulures, poussières et résidus."}]},{"id":"stairs","title":"40 — ESCALIER","stageId":"stairs","items":[{"id":"qc-stairs-01","label":"Dimensions de trémie et niveaux finis compatibles","hint":"Contrôler avant fabrication et avant pose.","critical":true},{"id":"qc-stairs-02","label":"Escalier stable, correctement fixé et sans jeu","hint":"Ancrages, appuis et liaison aux planchers.","critical":true},{"id":"qc-stairs-03","label":"Marches régulières et circulation confortable","hint":"Départ, arrivée, échappée et alignement."},{"id":"qc-stairs-04","label":"Garde-corps et mains courantes complets et rigides","hint":"Protection contre chute et fixations.","critical":true},{"id":"qc-stairs-05","label":"Finition conforme et absence de choc ou rayure","hint":"Protection pendant les autres travaux."}]},{"id":"render","title":"41 — ENDUIT EXTÉRIEUR","stageId":"render","items":[{"id":"qc-render-01","label":"Support propre, sec et préparé avant application","hint":"Reprises, protections et conditions météo adaptées."},{"id":"qc-render-02","label":"Teinte, texture et modénatures conformes au projet","hint":"Échantillon ou choix validé avant généralisation."},{"id":"qc-render-03","label":"Armatures et renforts présents aux points sensibles","hint":"Baies, changements de support et fissures potentielles."},{"id":"qc-render-04","label":"Épaisseur, régularité et finition homogènes","hint":"Absence de manque, cloquage, fissure ou spectre excessif."},{"id":"qc-render-05","label":"Tableaux, arêtes, soubassements et raccords soignés","hint":"Détails autour des menuiseries et équipements."},{"id":"qc-render-06","label":"Menuiseries, seuils et abords nettoyés","hint":"Aucune projection ou dégradation."}]},{"id":"heating","title":"42 — CHAUFFAGE / PAC","stageId":"heating","items":[{"id":"qc-heating-01","label":"Équipements conformes à l’étude et aux choix","hint":"Modèle, puissance, accessoires et emplacement.","critical":true},{"id":"qc-heating-02","label":"Unité extérieure stable, accessible et correctement implantée","hint":"Nuisances, évacuation condensats et maintenance."},{"id":"qc-heating-03","label":"Liaisons, calorifuge et traversées correctement traités","hint":"Protection mécanique, étanchéité et finition."},{"id":"qc-heating-04","label":"Régulation, sondes et zones fonctionnent","hint":"Paramétrage, programmation et consignes client."},{"id":"qc-heating-05","label":"Mise en service et essais documentés","hint":"Valeurs, réglages, réserves et rapport de mise en service.","critical":true},{"id":"qc-heating-06","label":"Notices et consignes d’entretien disponibles","hint":"Préparer la remise au client."}]},{"id":"final_earthworks","title":"43 — FINITION TERRASSEMENT / VRD","stageId":"final_earthworks","items":[{"id":"qc-final-earth-01","label":"Branchements aux réseaux réalisés et identifiés","hint":"Eau, électricité, télécom, assainissement et EP.","critical":true},{"id":"qc-final-earth-02","label":"Pentes de terrain éloignent les eaux de la maison","hint":"Pas de cuvette ni ruissellement vers les façades.","critical":true},{"id":"qc-final-earth-03","label":"Regards accessibles, stables et à bonne altitude","hint":"Couvercles, repérage et protection."},{"id":"qc-final-earth-04","label":"Remblais compactés sans dommage aux ouvrages","hint":"Réseaux, drains, terrasses et soubassements."},{"id":"qc-final-earth-05","label":"Terre végétale répartie et abords nivelés","hint":"Préparer l’usage futur et la gestion des eaux."},{"id":"qc-final-earth-06","label":"Chantier débarrassé des déchets et gravats enterrés","hint":"Aucun résidu caché dans les remblais."}]},{"id":"permeability_test","title":"44 — TEST DE PERMÉABILITÉ","stageId":"permeability_test","items":[{"id":"qc-permea-01","label":"Bâtiment prêt et configuration du test définie","hint":"Ouvertures, siphons, ventilation et équipements selon protocole."},{"id":"qc-permea-02","label":"Percements et traversées inspectés avant le test","hint":"Menuiseries, trappes, gaines, conduits et réseaux.","critical":true},{"id":"qc-permea-03","label":"Fuites détectées localisées et photographiées","hint":"Créer une liste d’actions avec responsable."},{"id":"qc-permea-04","label":"Corrections réalisées sans dégrader les ouvrages","hint":"Solutions durables et compatibles avec les finitions."},{"id":"qc-permea-05","label":"Rapport final reçu, conforme et archivé","hint":"Joindre le justificatif au dossier de réception.","critical":true}]},{"id":"cleaning","title":"45 — NETTOYAGE / PRÉ-RÉCEPTION","stageId":"cleaning","items":[{"id":"qc-cleaning-01","label":"Tous les locaux et équipements nettoyés","hint":"Sols, vitrages, sanitaires, meubles, appareils et extérieurs."},{"id":"qc-cleaning-02","label":"Protections, étiquettes et résidus de chantier retirés","hint":"Sans rayer ni dégrader les ouvrages."},{"id":"qc-cleaning-03","label":"Essais fonctionnels complets réalisés","hint":"Eau, électricité, chauffage, VMC, volets, portes et équipements.","critical":true},{"id":"qc-cleaning-04","label":"Liste interne de réserves établie et affectée","hint":"Photo, localisation, responsable et délai de levée."},{"id":"qc-cleaning-05","label":"Retouches et reprises terminées avant visite client","hint":"Contrôle croisé après intervention."},{"id":"qc-cleaning-06","label":"Clés, télécommandes, notices et documents regroupés","hint":"Préparer une remise complète et ordonnée."}]},{"id":"reception","title":"46 — RÉCEPTION / REMISE DES CLÉS","stageId":"reception","items":[{"id":"qc-reception-01","label":"Dossier de réception et documents obligatoires préparés","hint":"Attestations, rapports, notices, garanties et plans utiles.","critical":true},{"id":"qc-reception-02","label":"Relevés de compteurs et mise en service enregistrés","hint":"Eau, électricité, chauffage et équipements."},{"id":"qc-reception-03","label":"Fonctionnement des équipements expliqué au client","hint":"Chauffage, VMC, volets, entretien et coupures."},{"id":"qc-reception-04","label":"Réserves précisément décrites et localisées","hint":"Photo, entreprise responsable et délai de levée.","critical":true},{"id":"qc-reception-05","label":"Procès-verbal signé et exemplaires remis","hint":"Date, réserves, clés et observations."},{"id":"qc-reception-06","label":"Planning de levée des réserves communiqué","hint":"Suivi jusqu’à clôture complète du dossier."}]}];
+  const CHECKLIST = [{"id":"opening","title":"01 — OUVERTURE / TERRASSEMENT","stageId":"opening","items":[{"id":"qc-opening-01","label":"Implantation conforme au plan masse et aux limites","hint":"Axes, retraits, orientation, dimensions et repères pérennes.","critical":true},{"id":"qc-opening-02","label":"Altimétrie de référence contrôlée avant terrassement","hint":"Niveau fini, niveau plancher et évacuation des eaux.","critical":true},{"id":"qc-opening-03","label":"Décapage de la terre végétale correctement réalisé","hint":"Stockage séparé et absence de terre organique sous l’ouvrage."},{"id":"qc-opening-04","label":"Fouilles conformes en largeur, profondeur et portance","hint":"Fond propre, homogène, non remanié et sans eau stagnante.","critical":true},{"id":"qc-opening-05","label":"Accès, sécurité et stabilité des terrassements maîtrisés","hint":"Talutage, balisage, circulation engins et protection des tiers."},{"id":"qc-opening-06","label":"Photos et relevés avant bétonnage archivés","hint":"Implantation, fond de fouilles et points singuliers."}]},{"id":"foundations","title":"02 — FONDATIONS","stageId":"foundations","items":[{"id":"qc-foundations-01","label":"Fond de fouille propre et conforme à l’étude de sol","hint":"Pas de terre meuble, boue, eau ou surprofondeur non traitée.","critical":true},{"id":"qc-foundations-02","label":"Dimensions et niveaux des semelles contrôlés","hint":"Largeur, hauteur, redans et profondeur hors gel selon dossier.","critical":true},{"id":"qc-foundations-03","label":"Armatures conformes, calées et correctement recouvertes","hint":"Position, continuité, recouvrements, attentes et liaisons.","critical":true},{"id":"qc-foundations-04","label":"Passages de réseaux et attentes anticipés","hint":"Éviter tout percement ultérieur non prévu."},{"id":"qc-foundations-05","label":"Béton identifié, coulé sans ségrégation et correctement réparti","hint":"Bon de livraison, conditions météo et continuité du coulage."},{"id":"qc-foundations-06","label":"Cotes et photos avant recouvrement enregistrées","hint":"Traçabilité des armatures, attentes et points singuliers."}]},{"id":"vs_basement","title":"03 — VIDE SANITAIRE / SOUS-SOL","stageId":"vs_basement","items":[{"id":"qc-vs-01","label":"Implantation, dimensions et équerrage du soubassement","hint":"Contrôler diagonales, axes et épaisseurs.","critical":true},{"id":"qc-vs-02","label":"Chaînages, poteaux et attentes correctement positionnés","hint":"Continuité des armatures et liaison aux fondations.","critical":true},{"id":"qc-vs-03","label":"Arase étanche et coupure de capillarité réalisées","hint":"Continuité, niveau et absence de rupture.","critical":true},{"id":"qc-vs-04","label":"Ventilation du vide sanitaire prévue et non obstruée","hint":"Répartition des entrées d’air et protection contre les nuisibles."},{"id":"qc-vs-05","label":"Accès au vide sanitaire praticable","hint":"Trappe, hauteur utile et circulation vers les réseaux."},{"id":"qc-vs-06","label":"Étanchéité et drainage du sous-sol réalisés si prévus","hint":"Protection verticale, drain, exutoire et remblai adapté.","critical":true}]},{"id":"tubing","title":"04 — TUBAGE / RÉSEAUX SOUS DALLE","stageId":"tubing","items":[{"id":"qc-tubing-01","label":"Position des évacuations conforme aux plans","hint":"Cuisine, sanitaires, buanderie, garage et attentes extérieures.","critical":true},{"id":"qc-tubing-02","label":"Pentes, diamètres et sens d’écoulement vérifiés","hint":"Absence de contre-pente et raccords accessibles.","critical":true},{"id":"qc-tubing-03","label":"Fourreaux et gaines identifiés, protégés et obturés","hint":"Électricité, télécom, eau, chauffage et équipements futurs."},{"id":"qc-tubing-04","label":"Traversées de murs ou planchers correctement réservées","hint":"Protection mécanique et traitement des points d’étanchéité."},{"id":"qc-tubing-05","label":"Câblette ou prise de terre mise en place","hint":"Continuité et sortie accessible avant recouvrement.","critical":true},{"id":"qc-tubing-06","label":"Essais d’écoulement et photos avant fermeture réalisés","hint":"Tracer précisément les réseaux cachés."}]},{"id":"floor_slab_pour","title":"05 — COULAGE DU PLANCHER","stageId":"floor_slab_pour","items":[{"id":"qc-floor-01","label":"Type de plancher et calepinage conformes au plan fabricant","hint":"Poutrelles, entrevous, trémies, chevêtres et appuis.","critical":true},{"id":"qc-floor-02","label":"Étaiement stable, complet et correctement réglé","hint":"Respect des files, appuis et délais de maintien.","critical":true},{"id":"qc-floor-03","label":"Armatures, treillis et chaînages correctement positionnés","hint":"Recouvrements, cales, renforts et liaisons périphériques.","critical":true},{"id":"qc-floor-04","label":"Réservations, trémies et attentes contrôlées","hint":"Escalier, gaines, conduits, réseaux et niveaux finis."},{"id":"qc-floor-05","label":"Niveau, épaisseur et planéité avant coulage vérifiés","hint":"Repères de niveau visibles et cohérents."},{"id":"qc-floor-06","label":"Bétonnage, vibration et cure correctement réalisés","hint":"Limiter ségrégation, dessiccation rapide et surcharge locale."}]},{"id":"elevations","title":"06 — ÉLÉVATIONS","stageId":"elevations","items":[{"id":"qc-elevations-01","label":"Dimensions, aplomb, niveau et équerrage des murs","hint":"Contrôler régulièrement pendant l’élévation.","critical":true},{"id":"qc-elevations-02","label":"Ouvertures conformes en position et dimensions","hint":"Largeur, hauteur, allège, linteau et réservation de pose.","critical":true},{"id":"qc-elevations-03","label":"Chaînages horizontaux et verticaux continus","hint":"Angles, refends, baies et liaisons avec planchers.","critical":true},{"id":"qc-elevations-04","label":"Appuis, seuils et coffres prévus aux bonnes altitudes","hint":"Prendre en compte sols finis et type de menuiserie."},{"id":"qc-elevations-05","label":"Réservations techniques et traversées anticipées","hint":"VMC, évacuations, conduits, tableaux et équipements."},{"id":"qc-elevations-06","label":"Arase supérieure prête à recevoir la charpente","hint":"Niveau, planéité, ancrages et dimensions."}]},{"id":"frame_delivery","title":"07 — LIVRAISON CHARPENTE","stageId":"frame_delivery","items":[{"id":"qc-frame-delivery-01","label":"Bon de livraison conforme à la commande","hint":"Références, quantités, accessoires et plans fabricant."},{"id":"qc-frame-delivery-02","label":"Éléments identifiés, complets et sans dégradation","hint":"Signaler immédiatement casse, humidité ou déformation.","critical":true},{"id":"qc-frame-delivery-03","label":"Stockage à plat, ventilé et protégé du sol","hint":"Éviter déformation, humidité et mélange des éléments."},{"id":"qc-frame-delivery-04","label":"Moyens de levage et zone de pose sécurisés","hint":"Accès grue, stabilité du terrain et balisage."}]},{"id":"frame","title":"08 — CHARPENTE","stageId":"frame","items":[{"id":"qc-frame-01","label":"Pose conforme au plan de charpente fabricant","hint":"Ordre, orientation, entraxes, appuis et repérage.","critical":true},{"id":"qc-frame-02","label":"Ancrages, fixations et liaisons correctement réalisés","hint":"Sabots, équerres, scellements et fixations spécifiques.","critical":true},{"id":"qc-frame-03","label":"Contreventements, antiflambements et entretoises complets","hint":"Aucun élément du plan fabricant ne doit manquer.","critical":true},{"id":"qc-frame-04","label":"Aplomb, alignement et déformations contrôlés","hint":"Fermettes, pannes, chevrons et débords."},{"id":"qc-frame-05","label":"Trémies et chevêtres conformes aux équipements","hint":"Conduit, VMC, fenêtre de toit, trappe et accès."},{"id":"qc-frame-06","label":"Bois protégés de l’humidité avant couverture","hint":"Évacuer les eaux et éviter les stagnations."}]},{"id":"roof","title":"09 — COUVERTURE","stageId":"roof","items":[{"id":"qc-roof-01","label":"Écran sous-toiture continu et correctement raccordé","hint":"Recouvrements, rives, pénétrations et évacuation vers égout.","critical":true},{"id":"qc-roof-02","label":"Liteaux, contre-liteaux et ventilation sous couverture","hint":"Entrées/sorties d’air et continuité de la lame ventilée."},{"id":"qc-roof-03","label":"Calepinage, recouvrements et fixation des éléments","hint":"Rives, égouts, faîtages, arêtiers et zones exposées.","critical":true},{"id":"qc-roof-04","label":"Noues et pénétrations traitées sans point de fuite","hint":"Conduits, sorties, fenêtres de toit et raccords.","critical":true},{"id":"qc-roof-05","label":"Tuiles à douille et sorties positionnées selon plans","hint":"VMC, ventilation primaire et autres équipements."},{"id":"qc-roof-06","label":"Aspect final homogène et éléments endommagés remplacés","hint":"Alignement, teinte, coupes et propreté."}]},{"id":"zinc","title":"10 — ZINGUERIE","stageId":"zinc","items":[{"id":"qc-zinc-01","label":"Gouttières posées avec pente et supports réguliers","hint":"Écoulement naturel sans contre-pente ni déformation."},{"id":"qc-zinc-02","label":"Naissances, descentes et raccords étanches","hint":"Assemblages, dilatation et fixation.","critical":true},{"id":"qc-zinc-03","label":"Solins, abergements et couvertines continus","hint":"Raccords avec murs, conduits et équipements.","critical":true},{"id":"qc-zinc-04","label":"Rejets d’eau éloignés des façades et fondations","hint":"Raccordement provisoire ou définitif des eaux pluviales."},{"id":"qc-zinc-05","label":"Essai visuel d’écoulement réalisé","hint":"Absence de fuite, débordement ou stagnation."}]},{"id":"thresholds","title":"11 — POSE DES SEUILS ET APPUIS","stageId":"thresholds","items":[{"id":"qc-thresholds-01","label":"Références, dimensions et teintes conformes","hint":"Comparer à la MAP et aux menuiseries commandées."},{"id":"qc-thresholds-02","label":"Altimétrie compatible avec sols finis et accessibilité","hint":"Portes, baies, terrasses et niveaux intérieurs.","critical":true},{"id":"qc-thresholds-03","label":"Pente, rejingot et évacuation d’eau corrects","hint":"Éviter toute stagnation ou retour d’eau.","critical":true},{"id":"qc-thresholds-04","label":"Scellement stable et absence de fissure ou éclat","hint":"Protection jusqu’à la pose des menuiseries."},{"id":"qc-thresholds-05","label":"Largeurs de tableaux compatibles avec la pose","hint":"Contrôler les jeux et les réservations périphériques."}]},{"id":"pre_backfill","title":"12 — PRÉ-REMBLAIS","stageId":"pre_backfill","items":[{"id":"qc-prebackfill-01","label":"Étanchéité et protections des soubassements terminées","hint":"Aucune zone ne doit être remblayée avant contrôle.","critical":true},{"id":"qc-prebackfill-02","label":"Réseaux enterrés contrôlés et photographiés","hint":"Position, pente, profondeur, protection et repérage.","critical":true},{"id":"qc-prebackfill-03","label":"Matériau de remblai adapté et exempt de blocs agressifs","hint":"Protection des murs, drains et canalisations."},{"id":"qc-prebackfill-04","label":"Remblaiement réalisé par couches sans choc sur l’ouvrage","hint":"Compactage maîtrisé à proximité des murs."},{"id":"qc-prebackfill-05","label":"Pentes provisoires éloignent les eaux de la maison","hint":"Éviter les poches d’eau contre les façades."}]},{"id":"ext_joinery_delivery","title":"13 — LIVRAISON MENUISERIES EXTÉRIEURES","stageId":"ext_joinery_delivery","items":[{"id":"qc-mext-delivery-01","label":"Quantités, dimensions, sens et références vérifiés","hint":"Comparer le bordereau, les plans et les repères de baies.","critical":true},{"id":"qc-mext-delivery-02","label":"Coloris, vitrages et accessoires conformes","hint":"Poignées, volets, grilles, tapées et seuils."},{"id":"qc-mext-delivery-03","label":"Absence de choc, rayure, casse ou déformation","hint":"Émettre des réserves précises sur le bon de livraison."},{"id":"qc-mext-delivery-04","label":"Stockage vertical, stable, sec et protégé","hint":"Identifier chaque élément par baie."}]},{"id":"ext_joinery","title":"14 — MENUISERIES EXTÉRIEURES","stageId":"ext_joinery","items":[{"id":"qc-mext-01","label":"Support, dimensions de baies et niveaux contrôlés","hint":"Compatibilité avec seuils, appuis et tapées.","critical":true},{"id":"qc-mext-02","label":"Pose d’aplomb, de niveau et sans déformation","hint":"Jeux réguliers et fonctionnement sans contrainte.","critical":true},{"id":"qc-mext-03","label":"Fixations adaptées et correctement réparties","hint":"Aucune fixation insuffisante ou dans une zone fragile."},{"id":"qc-mext-04","label":"Étanchéité périphérique continue","hint":"Traitement intérieur, extérieur, angles et appuis.","critical":true},{"id":"qc-mext-05","label":"Ouvrants, serrures et volets testés","hint":"Ouverture, fermeture, réglage, fins de course et commandes."},{"id":"qc-mext-06","label":"Protections conservées et menuiseries sans dégradation","hint":"Nettoyer les rails et protéger jusqu’aux finitions."}]},{"id":"interior_joinery_delivery","title":"15 — LIVRAISON MENUISERIES INTÉRIEURES","stageId":"interior_joinery_delivery","items":[{"id":"qc-mint-delivery-01","label":"Quantités, dimensions et sens d’ouverture vérifiés","hint":"Portes, huisseries, blocs-portes et équipements."},{"id":"qc-mint-delivery-02","label":"Modèles, finitions et quincailleries conformes","hint":"Poignées, serrures, butées et accessoires."},{"id":"qc-mint-delivery-03","label":"Éléments secs, droits et sans choc","hint":"Réserves sur livraison si besoin."},{"id":"qc-mint-delivery-04","label":"Stockage à plat ou vertical selon fabricant","hint":"Local sec, ventilé et protégé des travaux humides."}]},{"id":"drywall_delivery","title":"16 — LIVRAISON PLÂTRERIE","stageId":"drywall_delivery","items":[{"id":"qc-placo-delivery-01","label":"Types et quantités de plaques conformes","hint":"Standard, hydrofuge, feu, acoustique et épaisseurs."},{"id":"qc-placo-delivery-02","label":"Ossatures, isolants et accessoires complets","hint":"Rails, montants, suspentes, bandes, vis et renforts."},{"id":"qc-placo-delivery-03","label":"Stockage au sec, à plat et sans déformation","hint":"Protection contre humidité, chocs et circulation."},{"id":"qc-placo-delivery-04","label":"Bâtiment suffisamment hors d’eau et ventilé","hint":"Ne pas enfermer l’humidité dans les ouvrages."}]},{"id":"drywall_first","title":"17 — PLÂTRERIE 1ÈRE INTERVENTION","stageId":"drywall_first","items":[{"id":"qc-placo1-01","label":"Implantation des cloisons conforme aux plans","hint":"Dimensions des pièces, dégagements et réservations.","critical":true},{"id":"qc-placo1-02","label":"Ossatures droites, stables et correctement fixées","hint":"Entraxes, doublages, plafonds et points singuliers."},{"id":"qc-placo1-03","label":"Renforts prévus pour équipements et charges","hint":"Meubles, sanitaires, mains courantes, radiateurs et TV."},{"id":"qc-placo1-04","label":"Type de plaque adapté à chaque local","hint":"Humidité, feu, acoustique et résistance mécanique."},{"id":"qc-placo1-05","label":"Isolation continue, jointive et sans tassement","hint":"Traitement des jonctions et absence de vide."},{"id":"qc-placo1-06","label":"Réservations techniques coordonnées avec les autres lots","hint":"Électricité, plomberie, VMC, chauffage et menuiseries."}]},{"id":"electrical_octopus_delivery","title":"18 — LIVRAISON PIEUVRE ÉLECTRIQUE","stageId":"electrical_octopus_delivery","items":[{"id":"qc-elec-pieuvre-01","label":"Repérage de la pieuvre conforme au plan électrique","hint":"Chaque départ doit être identifié et lisible."},{"id":"qc-elec-pieuvre-02","label":"Longueurs, sections et accessoires contrôlés","hint":"Comparer au dossier technique et aux options."},{"id":"qc-elec-pieuvre-03","label":"Aucune gaine écrasée, coupée ou endommagée","hint":"Réserves immédiates en cas de défaut."},{"id":"qc-elec-pieuvre-04","label":"Stockage protégé de l’humidité et des chocs","hint":"Conserver le repérage jusqu’à la pose."}]},{"id":"electrical_first","title":"19 — ÉLECTRICITÉ 1ÈRE INTERVENTION","stageId":"electrical_first","items":[{"id":"qc-elec1-01","label":"Implantation des appareillages conforme aux plans","hint":"Prises, interrupteurs, luminaires, tableau et équipements.","critical":true},{"id":"qc-elec1-02","label":"Hauteurs et alignements cohérents dans chaque pièce","hint":"Tenir compte des meubles, crédences et équipements."},{"id":"qc-elec1-03","label":"Gaines fixées sans écrasement ni courbure excessive","hint":"Passages protégés et accessibles avant fermeture."},{"id":"qc-elec1-04","label":"Séparation des réseaux et repérage des circuits","hint":"Courants forts, faibles, communication et automatismes."},{"id":"qc-elec1-05","label":"Liaison équipotentielle et terre prévues","hint":"Continuité vers tableau et locaux concernés.","critical":true},{"id":"qc-elec1-06","label":"Photos des réseaux avant fermeture archivées","hint":"Vue générale et repérage des passages cachés."}]},{"id":"plumbing_first","title":"20 — PLOMBERIE 1ÈRE INTERVENTION","stageId":"plumbing_first","items":[{"id":"qc-plumb1-01","label":"Implantation des alimentations et évacuations conforme","hint":"Cuisine, sanitaires, buanderie et équipements techniques.","critical":true},{"id":"qc-plumb1-02","label":"Diamètres, pentes et ventilation des évacuations vérifiés","hint":"Éviter contre-pentes, siphonnage et raccords inaccessibles.","critical":true},{"id":"qc-plumb1-03","label":"Canalisations fixées, protégées et calorifugées si nécessaire","hint":"Traversées, dilatation et protection mécanique."},{"id":"qc-plumb1-04","label":"Attentes correctement bouchonnées et repérées","hint":"Prévenir pollution, erreur et détérioration."},{"id":"qc-plumb1-05","label":"Essai d’étanchéité ou mise en pression réalisé","hint":"Tracer la date et les éventuelles corrections.","critical":true},{"id":"qc-plumb1-06","label":"Photos avant fermeture archivées","hint":"Réseaux dans doublages, cloisons et planchers."}]},{"id":"drywall_second","title":"21 — PLÂTRERIE 2ÈME INTERVENTION","stageId":"drywall_second","items":[{"id":"qc-placo2-01","label":"Réseaux contrôlés avant fermeture des parois","hint":"Aucun oubli d’alimentation, évacuation, gaine ou renfort.","critical":true},{"id":"qc-placo2-02","label":"Isolation et membranes continues avant fermeture","hint":"Jonctions, pénétrations et points singuliers.","critical":true},{"id":"qc-placo2-03","label":"Plaques correctement vissées et joints décalés","hint":"Pas de bord cassé, vis saillante ou fixation manquante."},{"id":"qc-placo2-04","label":"Découpes autour des boîtes et réseaux propres","hint":"Jeux réduits et rebouchages adaptés."},{"id":"qc-placo2-05","label":"Planéité, aplomb et équerrage des surfaces","hint":"Contrôle des angles, tableaux et raccords plafonds."}]},{"id":"joints","title":"22 — BANDES ET ENDUITS","stageId":"joints","items":[{"id":"qc-joints-01","label":"Bandes continues, marouflées et sans bulle","hint":"Joints courants, angles entrants et sortants."},{"id":"qc-joints-02","label":"Nombre de passes et temps de séchage respectés","hint":"Support sec avant ponçage et finition."},{"id":"qc-joints-03","label":"Têtes de vis et reprises correctement enduites","hint":"Aucune surépaisseur ou manque visible."},{"id":"qc-joints-04","label":"Angles, tableaux et raccords réguliers","hint":"Profilés, arêtes et jonctions propres."},{"id":"qc-joints-05","label":"Surface prête à recevoir la finition","hint":"Ponçage, dépoussiérage et absence de défaut rasant."}]},{"id":"electrical_second","title":"23 — ÉLECTRICITÉ 2ÈME INTERVENTION / VMC","stageId":"electrical_second","items":[{"id":"qc-elec2-01","label":"Tableau équipé, repéré et propre","hint":"Circuits, protections, réserve et documents de repérage.","critical":true},{"id":"qc-elec2-02","label":"Appareillages alignés, fixés et conformes aux choix","hint":"Plaques, commandes, prises et équipements spécifiques."},{"id":"qc-elec2-03","label":"Tests de fonctionnement réalisés sur chaque circuit","hint":"Éclairage, prises, commandes, volets et équipements.","critical":true},{"id":"qc-elec2-04","label":"Bouches VMC posées aux bons emplacements","hint":"Type de bouche, accessibilité et absence d’obstruction."},{"id":"qc-elec2-05","label":"Réseau VMC continu, fixé et non écrasé","hint":"Rejets extérieurs, condensats et accessibilité du caisson.","critical":true},{"id":"qc-elec2-06","label":"Documents et attestation électrique disponibles","hint":"Conserver schémas, notices et justificatifs."}]},{"id":"plumbing_second","title":"24 — PLOMBERIE 2ÈME INTERVENTION","stageId":"plumbing_second","items":[{"id":"qc-plumb2-01","label":"Robinets d’arrêt et nourrices accessibles et repérés","hint":"Accès maintenance sans dépose destructive."},{"id":"qc-plumb2-02","label":"Raccordements propres, stables et sans contrainte","hint":"Alimentations, évacuations et équipements."},{"id":"qc-plumb2-03","label":"Essais d’étanchéité et d’écoulement réalisés","hint":"Contrôle de chaque point d’eau et évacuation.","critical":true},{"id":"qc-plumb2-04","label":"Débits, pression et températures cohérents","hint":"Vérifier absence de bruit ou coup de bélier."},{"id":"qc-plumb2-05","label":"Joints et traversées terminés proprement","hint":"Rosaces, silicone et protection des parois."}]},{"id":"underfloor_heating","title":"25 — PLANCHER CHAUFFANT","stageId":"underfloor_heating","items":[{"id":"qc-ufh-01","label":"Support propre, sec et plan avant pose","hint":"Aucun gravat ni point dur sous isolant."},{"id":"qc-ufh-02","label":"Isolant de sol continu et bandes périphériques posées","hint":"Traitement des jonctions, seuils et passages.","critical":true},{"id":"qc-ufh-03","label":"Circuits conformes au plan et correctement fixés","hint":"Pas, longueurs, zones interdites et rayons de courbure.","critical":true},{"id":"qc-ufh-04","label":"Collecteurs accessibles, repérés et équipés","hint":"Correspondance des boucles et réglages."},{"id":"qc-ufh-05","label":"Mise en pression maintenue pendant le coulage","hint":"Contrôle de pression avant et après chape.","critical":true},{"id":"qc-ufh-06","label":"Photos et plan de recollement archivés","hint":"Repérer précisément les circuits avant recouvrement."}]},{"id":"insulation_delivery","title":"26 — LIVRAISON ISOLANT","stageId":"insulation_delivery","items":[{"id":"qc-insul-delivery-01","label":"Références, épaisseurs et résistances thermiques conformes","hint":"Comparer au dossier thermique et à la notice.","critical":true},{"id":"qc-insul-delivery-02","label":"Quantités et accessoires suffisants","hint":"Membranes, adhésifs, manchettes et suspentes."},{"id":"qc-insul-delivery-03","label":"Produits secs, emballages intacts et identifiés","hint":"Refuser les matériaux mouillés ou dégradés."},{"id":"qc-insul-delivery-04","label":"Stockage sec, ventilé et protégé","hint":"Éviter tassement, écrasement et pollution."}]},{"id":"insulation_installation","title":"27 — POSE ISOLANT","stageId":"insulation_installation","items":[{"id":"qc-insul-install-01","label":"Épaisseur et continuité de l’isolant contrôlées","hint":"Absence de vide, tassement ou compression excessive.","critical":true},{"id":"qc-insul-install-02","label":"Découpes ajustées autour des réseaux et ossatures","hint":"Éviter les ponts thermiques et passages d’air."},{"id":"qc-insul-install-03","label":"Membrane d’étanchéité à l’air continue","hint":"Recouvrements, adhésifs, raccords périphériques et pénétrations.","critical":true},{"id":"qc-insul-install-04","label":"Manchettes et traversées techniques étanchées","hint":"Gaines, conduits, câbles et éléments de structure."},{"id":"qc-insul-install-05","label":"Contrôle photographique avant fermeture","hint":"Conserver les preuves des zones cachées."}]},{"id":"liquid_screed","title":"28 — CHAPE LIQUIDE","stageId":"liquid_screed","items":[{"id":"qc-screed-01","label":"Support préparé, propre et étanche aux fuites de laitance","hint":"Reprises, passages et périphéries traités."},{"id":"qc-screed-02","label":"Bandes périphériques et joints prévus correctement","hint":"Désolidarisation, fractionnement et seuils.","critical":true},{"id":"qc-screed-03","label":"Repères de niveau et épaisseurs vérifiés","hint":"Compatibilité avec portes, carrelage et niveaux finis.","critical":true},{"id":"qc-screed-04","label":"Réseaux protégés et plancher chauffant sous pression","hint":"Aucun déplacement ni fuite pendant le coulage."},{"id":"qc-screed-05","label":"Coulage homogène et surface sans défaut majeur","hint":"Planéité, fissure, ségrégation et absence de zone creuse."},{"id":"qc-screed-06","label":"Séchage, ventilation et mise en chauffe documentés","hint":"Respecter les consignes avant revêtements.","critical":true}]},{"id":"attic_insulation","title":"29 — ISOLATION DES COMBLES","stageId":"attic_insulation","items":[{"id":"qc-attic-01","label":"Support et plafond prêts avant soufflage ou déroulage","hint":"Étanchéité à l’air et réseaux terminés."},{"id":"qc-attic-02","label":"Épaisseur et résistance thermique conformes","hint":"Repères de hauteur visibles et fiche chantier disponible.","critical":true},{"id":"qc-attic-03","label":"Isolation homogène jusque dans les zones difficiles","hint":"Rives, trappes, pieds de fermettes et angles."},{"id":"qc-attic-04","label":"Distances de sécurité autour des sources chaudes","hint":"Conduits, spots et équipements selon systèmes prévus.","critical":true},{"id":"qc-attic-05","label":"Ventilation de couverture non obstruée","hint":"Déflecteurs ou arrêts d’isolant aux égouts."},{"id":"qc-attic-06","label":"Trappe isolée, jointive et accessible","hint":"Protection contre chute d’isolant et passage d’air."}]},{"id":"sanitary_delivery","title":"30 — LIVRAISON SANITAIRES","stageId":"sanitary_delivery","items":[{"id":"qc-san-delivery-01","label":"Références, coloris et quantités conformes","hint":"Comparer aux choix client et à la commande."},{"id":"qc-san-delivery-02","label":"Dimensions compatibles avec les réservations","hint":"Receveurs, meubles, WC, baignoires et robinetterie."},{"id":"qc-san-delivery-03","label":"Aucune casse, rayure ou pièce manquante","hint":"Vérifier immédiatement les colis sensibles."},{"id":"qc-san-delivery-04","label":"Stockage protégé, identifié et sécurisé","hint":"Éviter la manutention inutile et les chocs."}]},{"id":"sanitary","title":"31 — SANITAIRES","stageId":"sanitary","items":[{"id":"qc-sanitary-01","label":"Implantation et hauteur des appareils conformes","hint":"Plans, usage, accessibilité et alignements."},{"id":"qc-sanitary-02","label":"Fixations stables et supports adaptés","hint":"Meubles, vasques, WC, receveurs et baignoires."},{"id":"qc-sanitary-03","label":"Étanchéité périphérique et sous équipements terminée","hint":"Silicones, raccords, parois et zones exposées.","critical":true},{"id":"qc-sanitary-04","label":"Chaque appareil testé en eau et en évacuation","hint":"Fuites, débit, vidage, siphon et débordement.","critical":true},{"id":"qc-sanitary-05","label":"Robinetterie réglée et eau chaude correctement distribuée","hint":"Sens chaud/froid, température et stabilité."},{"id":"qc-sanitary-06","label":"Appareils propres, protégés et sans dégradation","hint":"Retirer les protections seulement au bon moment."}]},{"id":"tile_delivery","title":"32 — LIVRAISON CARRELAGE","stageId":"tile_delivery","items":[{"id":"qc-tile-delivery-01","label":"Références, formats, teintes et calibres conformes","hint":"Comparer aux choix et vérifier les bains/nuances."},{"id":"qc-tile-delivery-02","label":"Quantités suffisantes avec marge prévue","hint":"Inclure plinthes, profils, découpes et réserve client."},{"id":"qc-tile-delivery-03","label":"Colles, joints et systèmes d’étanchéité compatibles","hint":"Support, local, format et usage."},{"id":"qc-tile-delivery-04","label":"Palettes protégées et carreaux sans casse","hint":"Stockage sec et stable."}]},{"id":"tile_installation","title":"33 — POSE CARRELAGE / FAÏENCE","stageId":"tile_installation","items":[{"id":"qc-tile-01","label":"Support sec, propre, plan et compatible","hint":"Contrôle avant primaire, colle ou étanchéité.","critical":true},{"id":"qc-tile-02","label":"Étanchéité des zones humides réalisée avant pose","hint":"Angles, relevés, traversées et raccords.","critical":true},{"id":"qc-tile-03","label":"Calepinage validé et coupes équilibrées","hint":"Axes, seuils, alignement faïence et équipements."},{"id":"qc-tile-04","label":"Planéité, alignement et largeur de joints réguliers","hint":"Absence de ressaut gênant ou carreau creux."},{"id":"qc-tile-05","label":"Joints périphériques et fractionnements respectés","hint":"Désolidarisation et continuité aux seuils.","critical":true},{"id":"qc-tile-06","label":"Silicones, profils et finitions propres","hint":"Angles, baignoire, douche, plinthes et seuils."}]},{"id":"interior_joinery_installation","title":"34 — POSE MENUISERIES INTÉRIEURES","stageId":"interior_joinery_installation","items":[{"id":"qc-mint-01","label":"Huisseries d’aplomb, de niveau et bien fixées","hint":"Jeux réguliers et absence de déformation."},{"id":"qc-mint-02","label":"Sens d’ouverture et modèles conformes aux plans","hint":"Vérifier chaque porte et équipement."},{"id":"qc-mint-03","label":"Jeu sous portes compatible avec ventilation et sols finis","hint":"Éviter frottements et défaut de transfert d’air."},{"id":"qc-mint-04","label":"Serrures, poignées et butées fonctionnent correctement","hint":"Réglage, fixation et cohérence des finitions."},{"id":"qc-mint-05","label":"Habillages, couvre-joints et plinthes terminés proprement","hint":"Coupes, raccords et pointes rebouchées."},{"id":"qc-mint-06","label":"Éléments sans choc, rayure ou éclat","hint":"Protection maintenue jusqu’à la réception."}]},{"id":"painting","title":"35 — PEINTURE","stageId":"painting","items":[{"id":"qc-paint-01","label":"Supports secs, dépoussiérés et correctement préparés","hint":"Reprises, ponçage, impression et protection des ouvrages."},{"id":"qc-paint-02","label":"Teintes et niveaux de finition conformes aux choix","hint":"Murs, plafonds, boiseries et pièces spécifiques."},{"id":"qc-paint-03","label":"Couverture homogène sans trace ni reprise visible","hint":"Contrôle en lumière naturelle et lumière rasante."},{"id":"qc-paint-04","label":"Angles, découpes et raccords nets","hint":"Menuiseries, appareillages, plafonds et plinthes."},{"id":"qc-paint-05","label":"Protections retirées sans dégradation","hint":"Nettoyer coulures, poussières et résidus."}]},{"id":"stairs","title":"36 — ESCALIER","stageId":"stairs","items":[{"id":"qc-stairs-01","label":"Dimensions de trémie et niveaux finis compatibles","hint":"Contrôler avant fabrication et avant pose.","critical":true},{"id":"qc-stairs-02","label":"Escalier stable, correctement fixé et sans jeu","hint":"Ancrages, appuis et liaison aux planchers.","critical":true},{"id":"qc-stairs-03","label":"Marches régulières et circulation confortable","hint":"Départ, arrivée, échappée et alignement."},{"id":"qc-stairs-04","label":"Garde-corps et mains courantes complets et rigides","hint":"Protection contre chute et fixations.","critical":true},{"id":"qc-stairs-05","label":"Finition conforme et absence de choc ou rayure","hint":"Protection pendant les autres travaux."}]},{"id":"render","title":"37 — ENDUIT EXTÉRIEUR","stageId":"render","items":[{"id":"qc-render-01","label":"Support propre, sec et préparé avant application","hint":"Reprises, protections et conditions météo adaptées."},{"id":"qc-render-02","label":"Teinte, texture et modénatures conformes au projet","hint":"Échantillon ou choix validé avant généralisation."},{"id":"qc-render-03","label":"Armatures et renforts présents aux points sensibles","hint":"Baies, changements de support et fissures potentielles."},{"id":"qc-render-04","label":"Épaisseur, régularité et finition homogènes","hint":"Absence de manque, cloquage, fissure ou spectre excessif."},{"id":"qc-render-05","label":"Tableaux, arêtes, soubassements et raccords soignés","hint":"Détails autour des menuiseries et équipements."},{"id":"qc-render-06","label":"Menuiseries, seuils et abords nettoyés","hint":"Aucune projection ou dégradation."}]},{"id":"heating","title":"38 — CHAUFFAGE / PAC","stageId":"heating","items":[{"id":"qc-heating-01","label":"Équipements conformes à l’étude et aux choix","hint":"Modèle, puissance, accessoires et emplacement.","critical":true},{"id":"qc-heating-02","label":"Unité extérieure stable, accessible et correctement implantée","hint":"Nuisances, évacuation condensats et maintenance."},{"id":"qc-heating-03","label":"Liaisons, calorifuge et traversées correctement traités","hint":"Protection mécanique, étanchéité et finition."},{"id":"qc-heating-04","label":"Régulation, sondes et zones fonctionnent","hint":"Paramétrage, programmation et consignes client."},{"id":"qc-heating-05","label":"Mise en service et essais documentés","hint":"Valeurs, réglages, réserves et rapport de mise en service.","critical":true},{"id":"qc-heating-06","label":"Notices et consignes d’entretien disponibles","hint":"Préparer la remise au client."}]},{"id":"final_earthworks","title":"39 — FINITION TERRASSEMENT / VRD","stageId":"final_earthworks","items":[{"id":"qc-final-earth-01","label":"Branchements aux réseaux réalisés et identifiés","hint":"Eau, électricité, télécom, assainissement et EP.","critical":true},{"id":"qc-final-earth-02","label":"Pentes de terrain éloignent les eaux de la maison","hint":"Pas de cuvette ni ruissellement vers les façades.","critical":true},{"id":"qc-final-earth-03","label":"Regards accessibles, stables et à bonne altitude","hint":"Couvercles, repérage et protection."},{"id":"qc-final-earth-04","label":"Remblais compactés sans dommage aux ouvrages","hint":"Réseaux, drains, terrasses et soubassements."},{"id":"qc-final-earth-05","label":"Terre végétale répartie et abords nivelés","hint":"Préparer l’usage futur et la gestion des eaux."},{"id":"qc-final-earth-06","label":"Chantier débarrassé des déchets et gravats enterrés","hint":"Aucun résidu caché dans les remblais."}]},{"id":"permeability_test","title":"40 — TEST DE PERMÉABILITÉ","stageId":"permeability_test","items":[{"id":"qc-permea-01","label":"Bâtiment prêt et configuration du test définie","hint":"Ouvertures, siphons, ventilation et équipements selon protocole."},{"id":"qc-permea-02","label":"Percements et traversées inspectés avant le test","hint":"Menuiseries, trappes, gaines, conduits et réseaux.","critical":true},{"id":"qc-permea-03","label":"Fuites détectées localisées et photographiées","hint":"Créer une liste d’actions avec responsable."},{"id":"qc-permea-04","label":"Corrections réalisées sans dégrader les ouvrages","hint":"Solutions durables et compatibles avec les finitions."},{"id":"qc-permea-05","label":"Rapport final reçu, conforme et archivé","hint":"Joindre le justificatif au dossier de réception.","critical":true}]},{"id":"cleaning","title":"41 — NETTOYAGE / PRÉ-RÉCEPTION","stageId":"cleaning","items":[{"id":"qc-cleaning-01","label":"Tous les locaux et équipements nettoyés","hint":"Sols, vitrages, sanitaires, meubles, appareils et extérieurs."},{"id":"qc-cleaning-02","label":"Protections, étiquettes et résidus de chantier retirés","hint":"Sans rayer ni dégrader les ouvrages."},{"id":"qc-cleaning-03","label":"Essais fonctionnels complets réalisés","hint":"Eau, électricité, chauffage, VMC, volets, portes et équipements.","critical":true},{"id":"qc-cleaning-04","label":"Liste interne de réserves établie et affectée","hint":"Photo, localisation, responsable et délai de levée."},{"id":"qc-cleaning-05","label":"Retouches et reprises terminées avant visite client","hint":"Contrôle croisé après intervention."},{"id":"qc-cleaning-06","label":"Clés, télécommandes, notices et documents regroupés","hint":"Préparer une remise complète et ordonnée."}]},{"id":"reception","title":"42 — RÉCEPTION / REMISE DES CLÉS","stageId":"reception","items":[{"id":"qc-reception-01","label":"Dossier de réception et documents obligatoires préparés","hint":"Attestations, rapports, notices, garanties et plans utiles.","critical":true},{"id":"qc-reception-02","label":"Relevés de compteurs et mise en service enregistrés","hint":"Eau, électricité, chauffage et équipements."},{"id":"qc-reception-03","label":"Fonctionnement des équipements expliqué au client","hint":"Chauffage, VMC, volets, entretien et coupures."},{"id":"qc-reception-04","label":"Réserves précisément décrites et localisées","hint":"Photo, entreprise responsable et délai de levée.","critical":true},{"id":"qc-reception-05","label":"Procès-verbal signé et exemplaires remis","hint":"Date, réserves, clés et observations."},{"id":"qc-reception-06","label":"Planning de levée des réserves communiqué","hint":"Suivi jusqu’à clôture complète du dossier."}]}];
   const SESSION_KEY = 'conduct-home-firebase-rest-session-v1';
   const FIREBASE_PROJECT_ID = 'arlogis-conduc-home';
   const openSectionsByProject = new Map();
@@ -2422,12 +2534,14 @@ Error generating stack: `+e.message+`
 
   const calculateProgress = (project) => {
     const map = getControlMap(project);
-    const total = CHECKLIST.reduce((sum, section) => sum + section.items.length, 0);
+    const itemIds = new Set(CHECKLIST.flatMap((section) => section.items.map((item) => item.id)));
+    const total = itemIds.size;
     let na = 0;
     let checked = 0;
     let rework = 0;
 
-    for (const entry of map.values()) {
+    for (const [itemId, entry] of map.entries()) {
+      if (!itemIds.has(itemId)) continue;
       if (entry.status === 'na') na += 1;
       if (entry.status === 'ok' || entry.status === 'rework') checked += 1;
       if (entry.status === 'rework') rework += 1;
@@ -2729,6 +2843,7 @@ Error generating stack: `+e.message+`
     preparedModals.add(modal);
 
     const existingMeeting = findExistingMeeting(context.project, modal);
+    modal.dataset.v150MeetingId = existingMeeting?.id || '';
     const label = document.createElement('label');
     label.className = 'full-field ch-meeting-stage-field';
     label.innerHTML = `
@@ -2868,19 +2983,26 @@ Error generating stack: `+e.message+`
       drawText(value, rightX - estimateTextWidth(value, fontSize, bold), yTop, fontSize, bold, rgb);
     };
     const drawHeader = (continuation = false) => {
-      fillRect(0, 0, PAGE_WIDTH, 8, [0.77, 0.06, 0.14]);
-      drawText('MAISONS ARLOGIS', MARGIN, 24, 9, true, [0.36, 0.38, 0.42]);
+      fillRect(0, 0, PAGE_WIDTH, 7, [0.77, 0.06, 0.14]);
+      drawText('MAISONS ARLOGIS', MARGIN, 22, 8.5, true, [0.38, 0.4, 0.44]);
       drawText(
-        continuation ? 'COMPTE RENDU DE RÉUNION - SUITE' : 'COMPTE RENDU DE RÉUNION DE CHANTIER',
+        continuation ? 'COMPTE RENDU DE RÉUNION - SUITE' : 'COMPTE RENDU DE RÉUNION',
         MARGIN,
-        41,
-        continuation ? 16 : 18,
+        39,
+        continuation ? 15 : 19,
         true,
         [0.12, 0.14, 0.17],
       );
-      drawRightText(formatFrenchDate(meeting.meetingDate), PAGE_WIDTH - MARGIN, 27, 9, true, [0.36, 0.38, 0.42]);
-      strokeLine(MARGIN, 76, PAGE_WIDTH - MARGIN, 76, [0.86, 0.87, 0.89], 0.8);
-      top = 94;
+
+      const dateCardWidth = 128;
+      const dateCardX = PAGE_WIDTH - MARGIN - dateCardWidth;
+      fillRect(dateCardX, 20, dateCardWidth, 42, [0.995, 0.94, 0.945]);
+      fillRect(dateCardX, 20, 3, 42, [0.77, 0.06, 0.14]);
+      drawText('DATE DE RÉUNION', dateCardX + 13, 28, 7.2, true, [0.58, 0.24, 0.28]);
+      drawText(formatFrenchDate(meeting.meetingDate), dateCardX + 13, 42, 9.5, true, [0.24, 0.16, 0.18]);
+
+      strokeLine(MARGIN, 78, PAGE_WIDTH - MARGIN, 78, [0.86, 0.87, 0.89], 0.8);
+      top = 96;
     };
     const newPage = (continuation = false) => {
       page = { commands: [] };
@@ -2891,11 +3013,20 @@ Error generating stack: `+e.message+`
       if (top + height <= BOTTOM_LIMIT) return;
       newPage(true);
     };
-    const drawInfoField = (label, value, x, y, width, height = 49) => {
-      fillRect(x, y, width, height, [0.965, 0.968, 0.972]);
-      drawText(label.toUpperCase(), x + 11, y + 9, 7.5, true, [0.46, 0.49, 0.54]);
-      wrapLine(value || 'Non renseigné', width - 22, 10.5, true).slice(0, 2)
-        .forEach((line, index) => drawText(line, x + 11, y + 23 + index * 12, 10.5, true));
+    const drawInfoCard = (label, value, x, y, width, height = 48) => {
+      fillRect(x, y, width, height, [0.968, 0.972, 0.976]);
+      fillRect(x, y, 3, height, [0.77, 0.06, 0.14]);
+      drawText(label.toUpperCase(), x + 14, y + 8, 7.2, true, [0.46, 0.49, 0.54]);
+      wrapLine(value || 'Non renseigné', width - 27, 10.5, true).slice(0, 2)
+        .forEach((line, index) => drawText(line, x + 14, y + 22 + index * 12, 10.5, true));
+    };
+
+    const drawStageCard = (value, y) => {
+      const width = PAGE_WIDTH - MARGIN * 2;
+      fillRect(MARGIN, y, width, 48, [0.995, 0.94, 0.945]);
+      fillRect(MARGIN, y, 4, 48, [0.77, 0.06, 0.14]);
+      drawText('ÉTAPE DU CHANTIER', MARGIN + 16, y + 8, 7.5, true, [0.58, 0.24, 0.28]);
+      drawText(value || 'Non définie', MARGIN + 16, y + 23, 12, true, [0.34, 0.08, 0.12]);
     };
 
     const notes = meeting.notes?.trim() || 'Aucune remarque saisie lors de cette réunion.';
@@ -2903,60 +3034,57 @@ Error generating stack: `+e.message+`
 
     const gap = 10;
     const columnWidth = (PAGE_WIDTH - MARGIN * 2 - gap) / 2;
-    drawInfoField('Chantier', project.name, MARGIN, top, columnWidth);
-    drawInfoField('Client', project.clientName, MARGIN + columnWidth + gap, top, columnWidth);
-    top += 59;
+    drawInfoCard('Chantier', project.name, MARGIN, top, columnWidth);
+    drawInfoCard('Client', project.clientName, MARGIN + columnWidth + gap, top, columnWidth);
+    top += 58;
 
     const address = [project.address, project.postalCode, project.city].filter(Boolean).join(', ');
-    drawInfoField('Adresse du chantier', address || project.city, MARGIN, top, columnWidth);
-    drawInfoField('Étape du chantier', selectedStageLabel, MARGIN + columnWidth + gap, top, columnWidth);
-    top += 59;
+    drawInfoCard('Adresse du chantier', address || project.city, MARGIN, top, PAGE_WIDTH - MARGIN * 2, 44);
+    top += 54;
 
-    drawInfoField('Réunion', `${meeting.title} - ${meeting.type}`, MARGIN, top, columnWidth);
-    drawInfoField('Statut', meetingStatusLabel(meeting.status), MARGIN + columnWidth + gap, top, columnWidth);
-    top += 67;
+    drawStageCard(selectedStageLabel, top);
+    top += 62;
 
-    fillRect(MARGIN, top, PAGE_WIDTH - MARGIN * 2, 29, [0.995, 0.93, 0.94]);
-    drawText('REMARQUES, DÉCISIONS ET ACTIONS', MARGIN + 12, top + 9, 9, true, [0.64, 0.05, 0.11]);
-    top += 41;
+    fillRect(MARGIN, top, PAGE_WIDTH - MARGIN * 2, 31, [0.15, 0.17, 0.2]);
+    fillRect(MARGIN, top, 4, 31, [0.77, 0.06, 0.14]);
+    drawText('POINTS ABORDÉS, DÉCISIONS ET ACTIONS', MARGIN + 16, top + 10, 9, true, [1, 1, 1]);
+    top += 44;
 
     const paragraphs = notes.replace(/\r/g, '').split('\n');
     for (const paragraph of paragraphs) {
       if (!paragraph.trim()) {
-        ensureSpace(9);
-        top += 9;
+        top += 4;
         continue;
       }
 
       const trimmed = paragraph.trim();
       const isBullet = /^[-*•]\s+/.test(trimmed);
       const content = isBullet ? trimmed.replace(/^[-*•]\s+/, '') : trimmed;
-      const leftIndent = isBullet ? 15 : 0;
-      const lines = wrapLine(content, PAGE_WIDTH - MARGIN * 2 - leftIndent, 10.5);
-      const paragraphHeight = lines.length * 15 + 4;
-      if (paragraphHeight < BOTTOM_LIMIT - 94) ensureSpace(paragraphHeight);
+      let lines = wrapLine(content, PAGE_WIDTH - MARGIN * 2 - 35, 10.5);
 
-      lines.forEach((line, index) => {
-        ensureSpace(16);
-        if (isBullet && index === 0) drawText('•', MARGIN, top, 10.5, true, [0.77, 0.06, 0.14]);
-        drawText(line, MARGIN + leftIndent, top, 10.5, false, [0.18, 0.2, 0.23]);
-        top += 15;
-      });
-      top += 4;
+      while (lines.length) {
+        if (top + 42 > BOTTOM_LIMIT) newPage(true);
+
+        const availableLines = Math.max(1, Math.floor((BOTTOM_LIMIT - top - 18) / 15));
+        const chunk = lines.slice(0, availableLines);
+        lines = lines.slice(availableLines);
+        const cardHeight = chunk.length * 15 + 18;
+
+        fillRect(MARGIN, top, PAGE_WIDTH - MARGIN * 2, cardHeight, [0.978, 0.98, 0.983]);
+        fillRect(MARGIN, top, 3, cardHeight, [0.77, 0.06, 0.14]);
+
+        if (isBullet) {
+          drawText('•', MARGIN + 14, top + 9, 11, true, [0.77, 0.06, 0.14]);
+        }
+
+        chunk.forEach((line, index) => {
+          drawText(line, MARGIN + 27, top + 9 + index * 15, 10.5, false, [0.18, 0.2, 0.23]);
+        });
+
+        top += cardHeight + 8;
+        if (lines.length) newPage(true);
+      }
     }
-
-    ensureSpace(72);
-    top += 9;
-    strokeLine(MARGIN, top, PAGE_WIDTH - MARGIN, top, [0.89, 0.9, 0.92], 0.7);
-    top += 14;
-    drawText(
-      'Ce document synthétise les points abordés pendant la réunion et peut être transmis directement au client.',
-      MARGIN,
-      top,
-      8.5,
-      false,
-      [0.42, 0.45, 0.5],
-    );
 
     pages.forEach((pdfPage, index) => {
       const previousPage = page;
@@ -3084,33 +3212,73 @@ Error generating stack: `+e.message+`
     const modalTitle = modal?.querySelector('.modal-header h2')?.textContent || '';
     if (!modal || !modalTitle.includes('réunion')) return;
 
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
     const context = getCurrentProject();
     const snapshot = captureMeetingForm(modal);
-    if (!context) return;
-
-    if (!snapshot.stageId) {
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      const select = modal.querySelector('.ch-meeting-stage-field select');
-      select?.focus();
-      alert('Choisis l’étape du chantier avant d’enregistrer la réunion.');
+    if (!context) {
+      alert('Le chantier sélectionné est introuvable.');
       return;
     }
 
-    setTimeout(async () => {
-      const result = await waitAndPatchMeeting(context.project.id, snapshot);
-      if (result) {
-        downloadMeetingPdf(result.project, result.meeting);
-      } else {
-        downloadMeetingPdf(context.project, {
-          id: `meeting-${Date.now()}`,
-          ...snapshot,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-      }
-    }, 250);
+    if (!snapshot.title || !snapshot.meetingDate || !snapshot.stageId) {
+      const select = modal.querySelector('.ch-meeting-stage-field select');
+      if (!snapshot.stageId) select?.focus();
+      alert('Renseigne le titre, la date et l’étape du chantier.');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const existingId = modal.dataset.v150MeetingId;
+    const existing = (context.project.meetings || []).find((meeting) => meeting.id === existingId)
+      || findExistingMeeting(context.project, modal);
+
+    const meeting = {
+      id: existing?.id || `meeting-${crypto.randomUUID()}`,
+      title: snapshot.title,
+      meetingDate: snapshot.meetingDate,
+      type: snapshot.type,
+      status: snapshot.status,
+      stageId: snapshot.stageId,
+      notes: snapshot.notes || undefined,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+
+    const meetings = context.project.meetings || [];
+    const nextMeetings = meetings.some((item) => item.id === meeting.id)
+      ? meetings.map((item) => item.id === meeting.id ? meeting : item)
+      : [meeting, ...meetings];
+
+    const nextProject = {
+      ...context.project,
+      meetings: nextMeetings,
+      updatedAt: now,
+    };
+
+    const nextWorkspace = {
+      ...context.entry.value,
+      workspaceUpdatedAt: now,
+      projects: context.entry.value.projects.map((project) =>
+        project.id === nextProject.id ? nextProject : project
+      ),
+    };
+
+    localStorage.setItem(context.entry.key, JSON.stringify(nextWorkspace));
+    window.dispatchEvent(new CustomEvent('conduct-home-remote-sync', { detail: nextWorkspace }));
+
+    // Le téléchargement part directement du clic utilisateur : le navigateur ne peut plus le bloquer.
+    downloadMeetingPdf(nextProject, meeting);
+
+    button.textContent = 'Enregistré';
+    button.disabled = true;
+    window.setTimeout(() => {
+      modal.querySelector('.modal-header .icon-button')?.click();
+    }, 80);
+
+    void saveRemoteWorkspace(nextWorkspace);
   }, true);
 
   const decorateMeetingCards = () => {
@@ -3142,6 +3310,188 @@ Error generating stack: `+e.message+`
   observer.observe(document.documentElement, { childList: true, subtree: true });
   run();
   setInterval(run, 650);
+})();
+</script>
+<script>
+(() => {
+  const FIREBASE_PROJECT_ID = 'arlogis-conduc-home';
+  const API_KEY = 'AIzaSyCwKzDrHHF3NkBEM5LM2SYkkhMgfekO4NM';
+  const SESSION_KEY = 'conduct-home-firebase-rest-session-v1';
+  const PENDING_PREFIX = 'conduct-home-pending-cloud-sync-v1.50';
+  const cloudFetch = window.__conductHomeNativeFetchV150 || window.fetch.bind(window);
+  let syncing = false;
+
+  const getSession = () => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); }
+    catch { return undefined; }
+  };
+
+  const saveSession = (session) => {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  };
+
+  const getValidSession = async () => {
+    const session = getSession();
+    if (!session?.id || !session?.idToken) return undefined;
+    if (Number(session.expiresAt || 0) > Date.now() + 30000) return session;
+    if (!session.refreshToken) return session;
+
+    try {
+      const response = await cloudFetch(`https://securetoken.googleapis.com/v1/token?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: session.refreshToken,
+        }).toString(),
+      });
+      if (!response.ok) return session;
+      const payload = await response.json();
+      const next = {
+        ...session,
+        idToken: String(payload.id_token),
+        refreshToken: String(payload.refresh_token || session.refreshToken),
+        expiresAt: Date.now() + Math.max(30, Number(payload.expires_in || 3600) - 60) * 1000,
+      };
+      saveSession(next);
+      return next;
+    } catch {
+      return session;
+    }
+  };
+
+  const getWorkspaceEntry = (userId) => {
+    const preferred = `conduct-home-workspace-v1.2-clean::${userId}`;
+    const keys = Object.keys(localStorage).filter((key) => key.startsWith('conduct-home-workspace-v1.2-clean'));
+    const key = keys.includes(preferred) ? preferred : keys.find((item) => item.endsWith(`::${userId}`)) || keys[0];
+    if (!key) return undefined;
+
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || '');
+      return value && Array.isArray(value.projects) ? { key, value } : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const pendingKey = (userId) => `${PENDING_PREFIX}::${userId}`;
+
+  const workspaceTime = (workspace) => {
+    const timestamp = Date.parse(workspace?.workspaceUpdatedAt || '');
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  };
+
+  const remoteUrl = (userId) =>
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${userId}`;
+
+  const legacyUrl = (userId) =>
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${userId}/workspace/main`;
+
+  const parseRemoteWorkspace = async (response) => {
+    if (!response.ok) return undefined;
+    const document = await response.json().catch(() => undefined);
+    const json = document?.fields?.workspaceJson?.stringValue;
+    if (!json) return undefined;
+    try { return JSON.parse(json); }
+    catch { return undefined; }
+  };
+
+  const loadRemote = async (session) => {
+    const headers = { Authorization: `Bearer ${session.idToken}` };
+    try {
+      const direct = await cloudFetch(remoteUrl(session.id), { headers });
+      const workspace = await parseRemoteWorkspace(direct);
+      if (workspace) return workspace;
+    } catch {}
+
+    try {
+      const legacy = await cloudFetch(legacyUrl(session.id), { headers });
+      return await parseRemoteWorkspace(legacy);
+    } catch {
+      return undefined;
+    }
+  };
+
+  const pushRemote = async (session, workspace) => {
+    const body = JSON.stringify({
+      fields: {
+        workspaceJson: { stringValue: JSON.stringify(workspace) },
+        updatedAt: { timestampValue: new Date().toISOString() },
+      },
+    });
+    const init = {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.idToken}`,
+      },
+      body,
+    };
+
+    try {
+      const direct = await cloudFetch(remoteUrl(session.id), init);
+      if (direct.ok) return true;
+    } catch {}
+
+    try {
+      const legacy = await cloudFetch(legacyUrl(session.id), init);
+      return legacy.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const syncNow = async () => {
+    if (syncing) return;
+    syncing = true;
+    try {
+      const session = await getValidSession();
+      if (!session) return;
+
+      const entry = getWorkspaceEntry(session.id);
+      const pendingRaw = localStorage.getItem(pendingKey(session.id));
+
+      if (pendingRaw) {
+        try {
+          const pending = JSON.parse(pendingRaw);
+          if (await pushRemote(session, pending)) {
+            localStorage.removeItem(pendingKey(session.id));
+          }
+        } catch {}
+        return;
+      }
+
+      const remote = await loadRemote(session);
+      if (!entry && remote) {
+        const key = `conduct-home-workspace-v1.2-clean::${session.id}`;
+        localStorage.setItem(key, JSON.stringify(remote));
+        window.dispatchEvent(new CustomEvent('conduct-home-remote-sync', { detail: remote }));
+        return;
+      }
+
+      if (!entry) return;
+
+      if (!remote) {
+        if (!(await pushRemote(session, entry.value))) {
+          localStorage.setItem(pendingKey(session.id), JSON.stringify(entry.value));
+        }
+        return;
+      }
+
+      if (workspaceTime(remote) > workspaceTime(entry.value)) {
+        localStorage.setItem(entry.key, JSON.stringify(remote));
+        window.dispatchEvent(new CustomEvent('conduct-home-remote-sync', { detail: remote }));
+      }
+    } finally {
+      syncing = false;
+    }
+  };
+
+  window.addEventListener('focus', () => void syncNow());
+  window.addEventListener('online', () => void syncNow());
+  window.addEventListener('conduct-home-remote-sync', () => window.setTimeout(() => void syncNow(), 250));
+  window.setInterval(() => void syncNow(), 8000);
+  window.setTimeout(() => void syncNow(), 1200);
 })();
 </script>
 </body>
