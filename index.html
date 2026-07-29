@@ -628,6 +628,86 @@
   }
 }
 
+
+/* =========================================================
+   V1.45 — nom du lot à gauche, flèche à droite, bandeau fin
+   ========================================================= */
+.artisan-lot-header {
+  min-height: 50px !important;
+  padding: 9px 12px 9px 14px !important;
+  align-items: center !important;
+}
+
+.artisan-lot-header .artisan-lot-title-wrap {
+  min-width: 0;
+  flex: 1;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.artisan-lot-header .artisan-lot-title-wrap h2 {
+  margin: 2px 0 0 !important;
+  font-size: 14px !important;
+  line-height: 1.1 !important;
+}
+
+.artisan-lot-header .artisan-lot-title-wrap p {
+  margin: 2px 0 0 !important;
+  max-width: 720px;
+  color: #8a919a !important;
+  font-size: 9px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.artisan-lot-header .artisan-lot-icon {
+  width: 30px !important;
+  height: 30px !important;
+  flex: none;
+  border-radius: 8px !important;
+}
+
+.artisan-lot-header-actions {
+  flex: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.artisan-lot-header .ch-v144-lot-toggle {
+  order: 2;
+  width: 30px !important;
+  height: 30px !important;
+  margin: 0 !important;
+  border-radius: 8px !important;
+}
+
+.artisan-lot-header .artisan-count-badge {
+  order: 1;
+  white-space: nowrap;
+}
+
+.artisan-lot-header .item-menu {
+  order: 3;
+}
+
+@media(max-width:620px) {
+  .artisan-lot-header {
+    padding: 8px 9px 8px 11px !important;
+  }
+
+  .artisan-lot-header .artisan-count-badge {
+    display: none !important;
+  }
+
+  .artisan-lot-header-actions {
+    gap: 4px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1815,6 +1895,35 @@ Error generating stack: `+e.message+`
   observer.observe(document.documentElement, { childList: true, subtree: true });
   run();
   setInterval(run, 800);
+})();
+</script>
+<script>
+(() => {
+  const placeArrowsOnRight = () => {
+    document.querySelectorAll('.artisan-lot-section').forEach((section) => {
+      const header = section.querySelector('.artisan-lot-header');
+      const toggle = header?.querySelector('.ch-v144-lot-toggle');
+      if (!header || !toggle) return;
+
+      let actions = header.querySelector('.artisan-lot-header-actions');
+      if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'artisan-lot-header-actions';
+        header.appendChild(actions);
+      }
+
+      const menu = actions.querySelector('.item-menu');
+      if (toggle.parentElement !== actions) {
+        if (menu) actions.insertBefore(toggle, menu);
+        else actions.appendChild(toggle);
+      }
+    });
+  };
+
+  const observer = new MutationObserver(placeArrowsOnRight);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  placeArrowsOnRight();
+  setInterval(placeArrowsOnRight, 700);
 })();
 </script>
 </body>
