@@ -1,6 +1,0 @@
-CONDUCT’HOME V1.67
-
-- Le bouton « Retour à l’application » a été supprimé de la page Commandes.
-- Un clic sur n’importe quel autre onglet du menu de gauche ferme immédiatement la page Commandes.
-- La navigation redevient identique au reste de l’application, sans étape supplémentaire.
-- La sélection d’un client et le préremplissage du mail restent inchangés.
