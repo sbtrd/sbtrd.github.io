@@ -1,8 +1,0 @@
-CONDUCT'HOME — VERSION 1.68
-
-- Commandes fonctionne désormais comme un véritable onglet de navigation.
-- Un seul onglet peut être actif dans le menu de gauche.
-- La page clients s'affiche dans la zone centrale de l'application.
-- Le clic sur un client ouvre la fenêtre de commande par-dessus la page Commandes.
-- La page Commandes reste visible et active en arrière-plan.
-- Suppression définitive du bouton « Revenir à l'application ».
