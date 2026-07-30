@@ -1,0 +1,8 @@
+CONDUCT’HOME V1.64
+
+- Glisser-déposer des documents entre Plans, Choix clients, Commandes, Administratif, Photos et Réception.
+- Le nouveau dossier est enregistré et synchronisé avec l’espace de travail.
+- Classement naturel des fichiers numérotés : 1, 2, 3, 10.
+- Dans Commandes, aucune pièce jointe n’est présélectionnée.
+- Le chantier et l’entreprise démarrent également sans sélection dans la fenêtre de commande.
+- La convention de l’entreprise reste jointe automatiquement lorsqu’elle est enregistrée.

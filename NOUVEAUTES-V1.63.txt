@@ -1,0 +1,8 @@
+CONDUCT'HOME V1.63
+
+CORRECTION DU CLASSEMENT DES DOCUMENTS
+
+- Cliquer sur un dossier de documents sélectionne désormais aussi la catégorie d'import correspondante.
+- Un document importé depuis le dossier Commandes est enregistré dans Commandes, et non plus dans Plans.
+- Le sélecteur de catégorie et le dossier affiché restent synchronisés.
+- L'import multiple et les conventions artisans de la V1.62 sont conservés.
