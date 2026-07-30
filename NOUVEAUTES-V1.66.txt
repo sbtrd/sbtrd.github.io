@@ -1,0 +1,6 @@
+CONDUCT’HOME V1.66
+
+- Les quatre dossiers Documents sont répartis à parts égales sur la largeur.
+- L’onglet Commandes affiche une page avec tous les clients actifs.
+- Un clic sur un client ouvre la fenêtre de commande préremplie.
+- Le nom du client apparaît dans l’objet, le message et l’encart du formulaire.
