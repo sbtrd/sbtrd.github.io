@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr" data-conduct-home-version="1.71-clean">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" id="theme-color" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Maisons ARLOGIS" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="./manifest.webmanifest?v=171" />
+  <link rel="icon" type="image/png" href="./app-icon.png?v=171" />
+  <link rel="apple-touch-icon" href="./app-icon.png?v=171" />
+  <link rel="stylesheet" href="./styles.css?v=171" />
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+  <script>
+    (() => {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const apply = () => {
+        const dark = media.matches;
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        document.querySelector('#theme-color')?.setAttribute('content', dark ? '#0f1114' : '#ffffff');
+      };
+      apply();
+      media.addEventListener?.('change', apply);
+    })();
+  </script>
+  <title>Maisons ARLOGIS · Pilotage chantier</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="./runtime.js?v=171"></script>
+  <script src="./app.js?v=171"></script>
+</body>
+</html>
