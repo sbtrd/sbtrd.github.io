@@ -1,4 +1,5 @@
-const CACHE='conduct-home-v1.69';
-self.addEventListener('install',event=>{self.skipWaiting();});
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',()=>{});
+const VERSION = 'conduct-home-v1.71-clean';
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.keys().then((names) => Promise.all(names.map((name) => caches.delete(name)))).then(() => self.clients.claim()));
+});
