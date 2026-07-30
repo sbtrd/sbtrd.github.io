@@ -1,0 +1,8 @@
+CONDUCT'HOME V1.62
+
+- Import multiple dans l'onglet Documents : sélection libre de plusieurs fichiers en une fois.
+- Ajout d'une convention PDF directement lors de la création ou modification d'un artisan.
+- La convention liée à l'artisan est automatiquement jointe à la commande Outlook.
+- L'ancien système de convention saisi depuis la fenêtre Commandes reste reconnu pour compatibilité.
+
+IMPORTANT : les fichiers eux-mêmes sont actuellement stockés localement dans le navigateur de l'appareil utilisé. Les métadonnées de la convention sont enregistrées dans la fiche artisan.
