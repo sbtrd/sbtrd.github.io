@@ -1,0 +1,7 @@
+CONDUCT'HOME — VERSION 1.69
+
+- Objet du mail simplifié : « Commande chantier NOM_DU_CHANTIER ».
+- Suppression du nom du client dans l'objet du mail.
+- Suppression du nom du client répété dans le corps du message.
+- Le message indique désormais simplement le chantier et sa ville.
+- Le fonctionnement de l'onglet Commandes reste inchangé.

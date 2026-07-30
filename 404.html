@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-conduct-home-version="1.67">
+<html lang="fr" data-conduct-home-version="1.68">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -1687,7 +1687,7 @@ Error generating stack: `+e.message+`
     const refreshProject=()=>{
       selectedIds.clear();activeCategory='Plans';
       const p=projects.find(x=>x.id===pSel.value);
-      subject.value=p?`Commande — Chantier ${p.name}`:'';
+      subject.value=p?`Commande chantier ${p.name}`:'';
       body.value=p?`Bonjour,\n\nVeuillez trouver ci-joint les éléments relatifs au chantier ${p.name}${p.city?' à '+p.city:''}.\n\nMerci de me confirmer la bonne réception de cette commande.\n\nCordialement,`:'';
       refreshList();
     };
@@ -1967,7 +1967,7 @@ Error generating stack: `+e.message+`
     }
 
     emailInput.value = email;
-    const subject = String(subjectInput.value || `Commandes — Chantier ${project.name}`).replace(/^Commande —/, 'Commandes —');
+    const subject = String(subjectInput.value || `Commande chantier ${project.name}`);
     subjectInput.value = subject;
 
     let body = String(bodyInput.value || '');
@@ -2074,7 +2074,7 @@ Error generating stack: `+e.message+`
       const workspace = findWorkspace();
       const project = (workspace.projects || []).find((item) => item.id === projectSelect.value);
       if (!project) return;
-      subjectInput.value = `Commandes — Chantier ${project.name}`;
+      subjectInput.value = `Commande chantier ${project.name}`;
       bodyInput.value = `Bonjour,\n\nVeuillez trouver ci-joint les éléments relatifs au chantier ${project.name}${project.city ? ` à ${project.city}` : ''}.\n\nCordialement,`;
     };
 
@@ -2082,7 +2082,7 @@ Error generating stack: `+e.message+`
     projectSelect.addEventListener('change', refreshText);
     refreshEmail();
 
-    subjectInput.value = subjectInput.value.replace(/^Commande —/, 'Commandes —');
+    subjectInput.value = subjectInput.value.replace(/^Commandes? —(?: .*? — )?Chantier /, 'Commande chantier ');
     bodyInput.value = bodyInput.value.replace(/\n*Merci de me confirmer la bonne réception de cette commande\.\n*/g, '\n');
 
     sendButton.onclick = (event) => {
@@ -3919,25 +3919,33 @@ Error generating stack: `+e.message+`
   if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => undefined));
 })();
 </script>
-<style id="conduct-home-v167-styles">
+<style id="conduct-home-v168-orders-tab-styles">
 .document-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 @media(max-width:1100px){.document-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:680px){.document-grid{grid-template-columns:1fr!important}}
-.ch-order-clients-page-v166{position:fixed;z-index:1250;inset:72px 0 0 248px;overflow:auto;background:var(--page-bg,#f4f2ee);padding:28px;color:var(--text,#24272c);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.ch-order-clients-shell{width:min(1500px,100%);margin:0 auto;display:grid;gap:20px}.ch-order-clients-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding:22px 24px;border:1px solid var(--border,#e3e8f0);border-radius:18px;background:var(--panel,#fff);box-shadow:var(--shadow,0 14px 40px rgba(15,23,42,.07))}.ch-order-clients-header small{display:block;color:var(--brand-red,#c51a2e);font-size:10px;font-weight:950;letter-spacing:1.3px;text-transform:uppercase}.ch-order-clients-header h1{margin:4px 0 5px;font-size:clamp(27px,3vw,38px);line-height:1.05;letter-spacing:-1.1px}.ch-order-clients-header p{margin:0;color:var(--muted,#667085);font-size:13px}.ch-order-clients-panel{overflow:hidden;border:1px solid var(--border,#e3e8f0);border-radius:18px;background:var(--panel,#fff);box-shadow:var(--shadow,0 14px 40px rgba(15,23,42,.07))}.ch-order-clients-panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid var(--border,#e3e8f0)}.ch-order-clients-panel-head strong{font-size:16px}.ch-order-clients-panel-head span{color:var(--muted,#667085);font-size:11px;font-weight:800}.ch-order-clients-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px}.ch-order-client-card-v166{width:100%;min-height:96px;padding:14px;display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--border,#e3e8f0);border-radius:14px;background:var(--panel,#fff);color:inherit;text-align:left;box-shadow:0 7px 22px rgba(15,23,42,.035);transition:.16s ease}.ch-order-client-card-v166:hover{border-color:#ef9ba2;background:#fff7f7;transform:translateY(-2px);box-shadow:0 12px 28px rgba(197,26,46,.09)}.ch-order-client-avatar-v166{width:46px;height:46px;display:grid;place-items:center;border:1px solid #ffd5d9;border-radius:12px;background:#fff0f1;color:#9f111f;font-size:11px;font-weight:950}.ch-order-client-copy-v166{min-width:0;display:grid;gap:3px}.ch-order-client-copy-v166 strong,.ch-order-client-copy-v166 span,.ch-order-client-copy-v166 small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ch-order-client-copy-v166 strong{font-size:12px}.ch-order-client-copy-v166 span{color:#55585e;font-size:10px;font-weight:750}.ch-order-client-copy-v166 small{color:var(--muted,#667085);font-size:9px}.ch-order-client-card-v166 b{color:#b2b4b8;font-size:19px}.ch-order-clients-empty{padding:70px 20px;text-align:center;color:var(--muted,#667085)}.ch-order-selected-client-v166{margin:-3px 0 17px;padding:13px 14px;display:flex;align-items:center;gap:12px;border:1px solid #efc4c8;border-radius:13px;background:linear-gradient(135deg,#fff,#fff7f7)}.ch-order-selected-client-v166>div{min-width:0;display:grid;gap:2px}.ch-order-selected-client-v166 small{color:#9f111f;font-size:8px;font-weight:950;letter-spacing:.8px;text-transform:uppercase}.ch-order-selected-client-v166 strong{font-size:13px}.ch-order-selected-client-v166 span{color:#667085;font-size:10px}@media(max-width:1100px){.ch-order-clients-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:860px){.ch-order-clients-page-v166{inset:0 0 calc(76px + env(safe-area-inset-bottom)) 0;padding:12px}.ch-order-clients-header{align-items:stretch;flex-direction:column;padding:17px}.ch-order-clients-grid{grid-template-columns:1fr;padding:12px}}
-html[data-theme=dark] .ch-order-clients-page-v166{background:#0f1114;color:#f4f4f2}html[data-theme=dark] .ch-order-clients-header,html[data-theme=dark] .ch-order-clients-panel,html[data-theme=dark] .ch-order-client-card-v166,html[data-theme=dark] html[data-theme=dark] .ch-order-client-card-v166:hover{background:#241719;border-color:#9f3740}html[data-theme=dark] .ch-order-client-copy-v166 span{color:#c5c7cc}html[data-theme=dark] .ch-order-selected-client-v166{background:#231719;border-color:#73313a;color:#f4f4f2}
+.page-content.ch-orders-tab-active-v168>:not(.ch-orders-tab-view-v168){display:none!important}
+.ch-orders-tab-view-v168{width:min(1600px,100%);margin:0 auto;display:grid;gap:22px;color:var(--text,#24272c);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.ch-orders-tab-header-v168{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.ch-orders-tab-header-v168 small{display:block;color:var(--brand-red,#c51a2e);font-size:10px;font-weight:950;letter-spacing:1.3px;text-transform:uppercase}.ch-orders-tab-header-v168 h1{margin:4px 0 5px;font-size:clamp(27px,3vw,38px);line-height:1.05;letter-spacing:-1.1px}.ch-orders-tab-header-v168 p{margin:0;color:var(--muted,#667085);font-size:13px}
+.ch-orders-clients-panel-v168{overflow:hidden;border:1px solid var(--border,#e3e8f0);border-radius:18px;background:var(--panel,#fff);box-shadow:var(--shadow,0 14px 40px rgba(15,23,42,.07))}.ch-orders-clients-head-v168{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid var(--border,#e3e8f0)}.ch-orders-clients-head-v168 strong{font-size:16px}.ch-orders-clients-head-v168 span{color:var(--muted,#667085);font-size:11px;font-weight:800}.ch-orders-clients-grid-v168{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:18px}.ch-order-client-card-v168{width:100%;min-height:96px;padding:14px;display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--border,#e3e8f0);border-radius:14px;background:var(--panel,#fff);color:inherit;text-align:left;box-shadow:0 7px 22px rgba(15,23,42,.035);transition:.16s ease}.ch-order-client-card-v168:hover{border-color:#ef9ba2;background:#fff7f7;transform:translateY(-2px);box-shadow:0 12px 28px rgba(197,26,46,.09)}.ch-order-client-avatar-v168{width:46px;height:46px;display:grid;place-items:center;border:1px solid #ffd5d9;border-radius:12px;background:#fff0f1;color:#9f111f;font-size:11px;font-weight:950}.ch-order-client-copy-v168{min-width:0;display:grid;gap:3px}.ch-order-client-copy-v168 strong,.ch-order-client-copy-v168 span,.ch-order-client-copy-v168 small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ch-order-client-copy-v168 strong{font-size:12px}.ch-order-client-copy-v168 span{color:#55585e;font-size:10px;font-weight:750}.ch-order-client-copy-v168 small{color:var(--muted,#667085);font-size:9px}.ch-order-client-card-v168 b{color:#b2b4b8;font-size:19px}.ch-orders-empty-v168{padding:70px 20px;text-align:center;color:var(--muted,#667085)}
+.ch-order-selected-client-v168{margin:-3px 0 17px;padding:13px 14px;display:flex;align-items:center;gap:12px;border:1px solid #efc4c8;border-radius:13px;background:linear-gradient(135deg,#fff,#fff7f7)}.ch-order-selected-client-v168>div{min-width:0;display:grid;gap:2px}.ch-order-selected-client-v168 small{color:#9f111f;font-size:8px;font-weight:950;letter-spacing:.8px;text-transform:uppercase}.ch-order-selected-client-v168 strong{font-size:13px}.ch-order-selected-client-v168 span{color:#667085;font-size:10px}
+.sidebar-nav .ch-orders-nav-item.active{color:#fff!important;background:var(--brand-red,#c51a2e)!important;box-shadow:0 8px 20px rgba(197,26,46,.3)!important}
+@media(max-width:1100px){.ch-orders-clients-grid-v168{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:680px){.ch-orders-clients-grid-v168{grid-template-columns:1fr;padding:12px}.ch-orders-tab-header-v168{align-items:stretch;flex-direction:column}}
+html[data-theme=dark] .ch-orders-clients-panel-v168,html[data-theme=dark] .ch-order-client-card-v168{background:#17191d;border-color:#343941;color:#f4f4f2}html[data-theme=dark] .ch-order-client-card-v168:hover{background:#241719;border-color:#9f3740}html[data-theme=dark] .ch-order-client-copy-v168 span{color:#c5c7cc}html[data-theme=dark] .ch-order-selected-client-v168{background:#231719;border-color:#73313a;color:#f4f4f2}
 </style>
-
-<script id="conduct-home-v167-orders">
+<script id="conduct-home-v168-orders-tab">
 (() => {
-  const PAGE_CLASS = 'ch-order-clients-page-v166';
+  const PAGE_CLASS = 'ch-orders-tab-view-v168';
+  let ordersActive = false;
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[character]);
   const collator = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
 
   const getWorkspace = () => {
-    for (const key of Object.keys(localStorage).filter((item) => item.startsWith('conduct-home-workspace-v1.2-clean'))) {
+    const keys = Object.keys(localStorage)
+      .filter((item) => item.startsWith('conduct-home-workspace-v1.2-clean'))
+      .sort((left, right) => Number(right.includes('::')) - Number(left.includes('::')));
+    for (const key of keys) {
       try {
         const value = JSON.parse(localStorage.getItem(key) || '');
         if (value && Array.isArray(value.projects)) return value;
@@ -3948,18 +3956,32 @@ html[data-theme=dark] .ch-order-clients-page-v166{background:#0f1114;color:#f4f4
 
   const getInitials = (name) => String(name || '')
     .replace(/\b(M\.?|Mme|Mlle|Monsieur|Madame)\b/gi, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'CL';
+    .split(/\s+/).filter(Boolean).slice(0, 2)
+    .map((part) => part[0]?.toUpperCase()).join('') || 'CL';
 
-  const closePage = () => {
-    document.querySelector(`.${PAGE_CLASS}`)?.remove();
-    document.querySelectorAll('.ch-orders-nav-item,.ch-orders-mobile-option').forEach((button) => button.classList.remove('active'));
+  const setOrdersNavigationActive = () => {
+    document.querySelectorAll('.sidebar-nav button').forEach((button) => button.classList.remove('active'));
+    document.querySelectorAll('.ch-orders-nav-item').forEach((button) => {
+      button.classList.add('nav-item', 'active');
+      button.setAttribute('aria-current', 'page');
+    });
+    document.querySelectorAll('.mobile-tab-option,.ch-orders-mobile-option').forEach((button) => button.classList.remove('active'));
+    document.querySelectorAll('.ch-orders-mobile-option').forEach((button) => button.classList.add('active'));
+    const mobileLabel = document.querySelector('.mobile-tab-current span');
+    if (mobileLabel) mobileLabel.textContent = 'Commandes';
   };
 
-  const openOrderForm = (project) => {
+  const closeOrdersTab = () => {
+    ordersActive = false;
+    document.querySelector('.page-content')?.classList.remove('ch-orders-tab-active-v168');
+    document.querySelector(`.${PAGE_CLASS}`)?.remove();
+    document.querySelectorAll('.ch-orders-nav-item,.ch-orders-mobile-option').forEach((button) => {
+      button.classList.remove('active');
+      button.removeAttribute('aria-current');
+    });
+  };
+
+  const fillOrderModal = (project) => {
     document.querySelector('.ch-order-launch')?.click();
     let attempts = 0;
     const timer = window.setInterval(() => {
@@ -3967,27 +3989,25 @@ html[data-theme=dark] .ch-order-clients-page-v166{background:#0f1114;color:#f4f4
       const projectSelect = document.querySelector('#cho-project');
       const modal = document.querySelector('.ch-order-modal');
       if (!(projectSelect instanceof HTMLSelectElement) || !modal) {
-        if (attempts > 40) window.clearInterval(timer);
+        if (attempts > 50) window.clearInterval(timer);
         return;
       }
 
       projectSelect.value = project.id;
       projectSelect.dispatchEvent(new Event('change', { bubbles: true }));
 
-      if (!modal.querySelector('.ch-order-selected-client-v166')) {
-        const selectedClient = document.createElement('div');
-        selectedClient.className = 'ch-order-selected-client-v166';
-        selectedClient.innerHTML = `<span class="ch-order-client-avatar-v166">${escapeHtml(getInitials(project.clientName))}</span><div><small>Client sélectionné</small><strong>${escapeHtml(project.clientName || project.name)}</strong><span>${escapeHtml(project.name)}${project.city ? ` · ${escapeHtml(project.city)}` : ''}</span></div>`;
-        modal.querySelector('.ch-order-head')?.insertAdjacentElement('afterend', selectedClient);
-      }
+      modal.querySelector('.ch-order-selected-client-v168')?.remove();
+      const selectedClient = document.createElement('div');
+      selectedClient.className = 'ch-order-selected-client-v168';
+      selectedClient.innerHTML = `<span class="ch-order-client-avatar-v168">${escapeHtml(getInitials(project.clientName))}</span><div><small>Client sélectionné</small><strong>${escapeHtml(project.clientName || project.name)}</strong><span>${escapeHtml(project.name)}${project.city ? ` · ${escapeHtml(project.city)}` : ''}</span></div>`;
+      modal.querySelector('.ch-order-head')?.insertAdjacentElement('afterend', selectedClient);
 
       const fillMail = () => {
         const subject = document.querySelector('#cho-subject');
         const body = document.querySelector('#cho-body');
-        if (subject instanceof HTMLInputElement) subject.value = `Commandes — ${project.clientName || project.name} — Chantier ${project.name}`;
-        if (body instanceof HTMLTextAreaElement) body.value = `Bonjour,\n\nVeuillez trouver ci-joint les éléments relatifs au chantier de ${project.clientName || project.name}, ${project.name}${project.city ? ` à ${project.city}` : ''}.\n\nCordialement,`;
+        if (subject instanceof HTMLInputElement) subject.value = `Commande chantier ${project.name}`;
+        if (body instanceof HTMLTextAreaElement) body.value = `Bonjour,\n\nVeuillez trouver ci-joint les éléments relatifs au chantier ${project.name}${project.city ? ` à ${project.city}` : ''}.\n\nMerci de me confirmer la bonne réception de cette commande.\n\nCordialement,`;
       };
-
       fillMail();
       window.setTimeout(fillMail, 80);
       window.setTimeout(fillMail, 250);
@@ -3995,25 +4015,30 @@ html[data-theme=dark] .ch-order-clients-page-v166{background:#0f1114;color:#f4f4
     }, 50);
   };
 
-  const showClientsPage = () => {
-    closePage();
+  const renderOrdersTab = () => {
+    if (!ordersActive) return;
+    const content = document.querySelector('.page-content');
+    if (!content) return;
+    content.classList.add('ch-orders-tab-active-v168');
+    setOrdersNavigationActive();
+    if (content.querySelector(`.${PAGE_CLASS}`)) return;
+
     const projects = (getWorkspace().projects || [])
       .filter((project) => !project.archivedAt)
       .sort((left, right) => collator.compare(left.clientName || left.name, right.clientName || right.name));
-
     const page = document.createElement('section');
     page.className = PAGE_CLASS;
-    page.innerHTML = `<div class="ch-order-clients-shell"><header class="ch-order-clients-header"><div><small>Préparation Outlook</small><h1>Commandes</h1><p>Choisis le client concerné pour ouvrir directement sa fenêtre de commande.</p></div></header><section class="ch-order-clients-panel"><div class="ch-order-clients-panel-head"><strong>Clients actifs</strong><span>${projects.length} client${projects.length > 1 ? 's' : ''}</span></div>${projects.length ? `<div class="ch-order-clients-grid">${projects.map((project) => `<button type="button" class="ch-order-client-card-v166" data-project-id="${escapeHtml(project.id)}"><span class="ch-order-client-avatar-v166">${escapeHtml(getInitials(project.clientName))}</span><span class="ch-order-client-copy-v166"><strong>${escapeHtml(project.clientName || project.name)}</strong><span>${escapeHtml(project.name)}</span><small>${escapeHtml([project.postalCode, project.city].filter(Boolean).join(' '))}</small></span><b>→</b></button>`).join('')}</div>` : '<div class="ch-order-clients-empty"><strong>Aucun client disponible.</strong><p>Crée d’abord un chantier pour préparer une commande.</p></div>'}</section></div>`;
-
-    document.body.appendChild(page);
-    document.querySelectorAll('.ch-orders-nav-item,.ch-orders-mobile-option').forEach((button) => button.classList.add('active'));
-    page.querySelectorAll('.ch-order-client-card-v166').forEach((button) => button.addEventListener('click', () => {
+    page.innerHTML = `<header class="ch-orders-tab-header-v168"><div><small>Préparation Outlook</small><h1>Commandes</h1><p>Choisis le client concerné pour ouvrir sa fenêtre de commande. Cet onglet reste actif en arrière-plan.</p></div></header><section class="ch-orders-clients-panel-v168"><div class="ch-orders-clients-head-v168"><strong>Clients actifs</strong><span>${projects.length} client${projects.length > 1 ? 's' : ''}</span></div>${projects.length ? `<div class="ch-orders-clients-grid-v168">${projects.map((project) => `<button type="button" class="ch-order-client-card-v168" data-project-id="${escapeHtml(project.id)}"><span class="ch-order-client-avatar-v168">${escapeHtml(getInitials(project.clientName))}</span><span class="ch-order-client-copy-v168"><strong>${escapeHtml(project.clientName || project.name)}</strong><span>${escapeHtml(project.name)}</span><small>${escapeHtml([project.postalCode, project.city].filter(Boolean).join(' '))}</small></span><b aria-hidden="true">→</b></button>`).join('')}</div>` : '<div class="ch-orders-empty-v168"><strong>Aucun client disponible.</strong><p>Crée d’abord un chantier pour préparer une commande.</p></div>'}</section>`;
+    content.appendChild(page);
+    page.querySelectorAll('.ch-order-client-card-v168').forEach((button) => button.addEventListener('click', () => {
       const project = projects.find((item) => item.id === button.getAttribute('data-project-id'));
-      if (project) {
-        closePage();
-        openOrderForm(project);
-      }
+      if (project) fillOrderModal(project);
     }));
+  };
+
+  const openOrdersTab = () => {
+    ordersActive = true;
+    renderOrdersTab();
   };
 
   document.addEventListener('click', (event) => {
@@ -4023,18 +4048,20 @@ html[data-theme=dark] .ch-order-clients-page-v166{background:#0f1114;color:#f4f4
     const ordersButton = target.closest('.ch-orders-nav-item,.ch-orders-mobile-option');
     if (ordersButton) {
       event.preventDefault();
+      event.stopPropagation();
       event.stopImmediatePropagation();
-      showClientsPage();
+      openOrdersTab();
       return;
     }
 
-    const regularNavigation = target.closest('.sidebar-nav button,.mobile-tab-option,.notification-button');
-    if (regularNavigation && document.querySelector(`.${PAGE_CLASS}`)) closePage();
+    const regularNavigation = target.closest('.sidebar-nav button:not(.ch-orders-nav-item),.mobile-tab-option:not(.ch-orders-mobile-option),.notification-button');
+    if (regularNavigation && ordersActive) closeOrdersTab();
   }, true);
 
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && document.querySelector(`.${PAGE_CLASS}`)) closePage();
+  const observer = new MutationObserver(() => {
+    if (ordersActive) renderOrdersTab();
   });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 })();
 </script>
 </body>
