@@ -5437,21 +5437,17 @@ body { background: #f5f5f3; }
 @media (max-width: 680px) { .document-row-actions { width: 100%; margin-left: 0; } .document-row-actions button { flex: 1; } }
 
 
-/* V1.66 — sélection client avant préparation de commande */
+/* V1.72 — sélection de chantier compacte */
 .order-client-picker { overflow: hidden; }
-.order-client-grid { padding: 18px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.order-client-card { width: 100%; min-height: 92px; padding: 14px; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 13px; background: var(--panel, #fff); color: inherit; text-align: left; box-shadow: 0 7px 22px rgba(15,23,42,.035); transition: .16s ease; }
-.order-client-card:hover { border-color: #ef9ba2; background: #fff7f7; transform: translateY(-2px); box-shadow: 0 12px 28px rgba(197,26,46,.09); }
+.order-client-grid { padding: 10px 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+.order-client-card { width: 100%; min-height: 44px; padding: 10px 13px; display: flex; align-items: center; border: 1px solid var(--border); border-radius: 9px; background: var(--panel, #fff); color: inherit; text-align: left; transition: border-color .15s ease, background .15s ease; }
+.order-client-card:hover { border-color: #ef9ba2; background: #fff7f7; }
+.order-client-card strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 800; }
 .order-client-avatar { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 1px solid #ffd5d9; border-radius: 12px; background: #fff0f1; color: var(--brand-red-dark, #9f111f); font-size: 11px; font-weight: 950; }
-.order-client-copy { min-width: 0; display: grid; gap: 3px; }
-.order-client-copy strong, .order-client-copy span, .order-client-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.order-client-copy strong { font-size: 12px; }.order-client-copy span { color: #55585e; font-size: 10px; font-weight: 750; }.order-client-copy small { color: var(--muted); font-size: 9px; }
-.order-client-card > b { color: #b2b4b8; font-size: 18px; }.order-client-card:hover > b { color: var(--brand-red); }
 .order-client-empty { min-height: 220px; }.order-client-empty span { display: block; margin-top: 5px; }
 .order-selected-client { padding: 15px 17px; display: flex; align-items: center; gap: 13px; border-color: #efc4c8; background: linear-gradient(135deg, var(--panel, #fff), #fff8f8); }
 .order-selected-client > div { min-width: 0; display: grid; gap: 3px; }.order-selected-client strong { font-size: 14px; }.order-selected-client small { color: var(--muted); font-size: 10px; }
-@media (max-width: 1100px) { .order-client-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 680px) { .document-grid, .order-client-grid { grid-template-columns: 1fr; } .order-client-grid { padding: 12px; } }
+@media (max-width: 680px) { .document-grid, .order-client-grid { grid-template-columns: 1fr; } .order-client-grid { padding: 8px 10px 12px; } }
 
 
 /* V1.68 — Commandes comme onglet normal avec fenêtre au-dessus */
