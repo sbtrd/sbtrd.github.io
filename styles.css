@@ -5437,18 +5437,17 @@ body { background: #f5f5f3; }
 @media (max-width: 680px) { .document-row-actions { width: 100%; margin-left: 0; } .document-row-actions button { flex: 1; } }
 
 
-/* V1.73 — liste de chantiers réellement fine */
+/* V1.74 — liste Commandes fine et compatible avec le runtime */
 .order-client-picker { overflow: hidden; }
 .order-project-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--border);
 }
 .order-project-row {
   width: 100%;
   min-width: 0;
   min-height: 42px;
-  padding: 0 16px;
+  padding: 0 17px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -5463,7 +5462,7 @@ body { background: #f5f5f3; }
 .order-project-row:nth-child(odd) { border-right: 1px solid var(--border); }
 .order-project-row:hover { background: #fff5f5; color: var(--brand-red-dark, #a50b17); }
 .order-project-row strong,
-.order-project-row span {
+.order-project-city {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5471,7 +5470,7 @@ body { background: #f5f5f3; }
   font-size: 11px;
 }
 .order-project-row strong { font-weight: 850; }
-.order-project-row span { color: var(--muted); font-weight: 650; }
+.order-project-city { color: var(--muted); font-weight: 650; }
 .order-client-avatar { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 1px solid #ffd5d9; border-radius: 12px; background: #fff0f1; color: var(--brand-red-dark, #9f111f); font-size: 11px; font-weight: 950; }
 .order-client-empty { min-height: 220px; }
 .order-client-empty span { display: block; margin-top: 5px; }
