@@ -5437,18 +5437,53 @@ body { background: #f5f5f3; }
 @media (max-width: 680px) { .document-row-actions { width: 100%; margin-left: 0; } .document-row-actions button { flex: 1; } }
 
 
-/* V1.72 — sélection de chantier compacte */
+/* V1.73 — liste de chantiers réellement fine */
 .order-client-picker { overflow: hidden; }
-.order-client-grid { padding: 10px 14px 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
-.order-client-card { width: 100%; min-height: 44px; padding: 10px 13px; display: flex; align-items: center; border: 1px solid var(--border); border-radius: 9px; background: var(--panel, #fff); color: inherit; text-align: left; transition: border-color .15s ease, background .15s ease; }
-.order-client-card:hover { border-color: #ef9ba2; background: #fff7f7; }
-.order-client-card strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 800; }
+.order-project-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+}
+.order-project-row {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.order-project-row:nth-child(odd) { border-right: 1px solid var(--border); }
+.order-project-row:hover { background: #fff5f5; color: var(--brand-red-dark, #a50b17); }
+.order-project-row strong,
+.order-project-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.order-project-row strong { font-weight: 850; }
+.order-project-row span { color: var(--muted); font-weight: 650; }
 .order-client-avatar { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border: 1px solid #ffd5d9; border-radius: 12px; background: #fff0f1; color: var(--brand-red-dark, #9f111f); font-size: 11px; font-weight: 950; }
-.order-client-empty { min-height: 220px; }.order-client-empty span { display: block; margin-top: 5px; }
+.order-client-empty { min-height: 220px; }
+.order-client-empty span { display: block; margin-top: 5px; }
 .order-selected-client { padding: 15px 17px; display: flex; align-items: center; gap: 13px; border-color: #efc4c8; background: linear-gradient(135deg, var(--panel, #fff), #fff8f8); }
-.order-selected-client > div { min-width: 0; display: grid; gap: 3px; }.order-selected-client strong { font-size: 14px; }.order-selected-client small { color: var(--muted); font-size: 10px; }
-@media (max-width: 680px) { .document-grid, .order-client-grid { grid-template-columns: 1fr; } .order-client-grid { padding: 8px 10px 12px; } }
-
+.order-selected-client > div { min-width: 0; display: grid; gap: 3px; }
+.order-selected-client strong { font-size: 14px; }
+.order-selected-client small { color: var(--muted); font-size: 10px; }
+@media (max-width: 680px) {
+  .document-grid, .order-project-list { grid-template-columns: 1fr; }
+  .order-project-row:nth-child(odd) { border-right: 0; }
+  .order-project-row { min-height: 44px; padding: 0 13px; }
+}
 
 /* V1.68 — Commandes comme onglet normal avec fenêtre au-dessus */
 .order-compose-modal-content { display: grid; gap: 14px; padding: 16px; }
