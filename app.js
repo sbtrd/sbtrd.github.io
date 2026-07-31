@@ -1,4 +1,4 @@
-/* Conduct'Home v1.81 — bundle applicatif propre, sans patch injecté. */
+/* Conduct'Home v1.82 — PDF artisan identique pour Outlook. */
 (function (global) {
 'use strict';
 const modules = {
@@ -1243,13 +1243,25 @@ function OrdersView({ projects, artisans, documents }) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sanitizePlanningFileName = void 0;
 exports.createArtisanPlanningPdf = createArtisanPlanningPdf;
-const PAGE_WIDTH = 841.89;
-const PAGE_HEIGHT = 595.28;
-const MARGIN = 34;
-const HEADER_HEIGHT = 94;
-const FOOTER_HEIGHT = 30;
-const TABLE_HEADER_HEIGHT = 28;
-const ROW_HEIGHT = 24;
+const MM = 72 / 25.4;
+const PAGE_WIDTH = 420 * MM;
+const PAGE_HEIGHT = 297 * MM;
+const MARGIN_X = 7 * MM;
+const MARGIN_TOP = 7 * MM;
+const MARGIN_BOTTOM = 6 * MM;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+const HEADER_HEIGHT = 27 * MM;
+const SECTION_GAP = 4 * MM;
+const INFO_HEIGHT = 15 * MM;
+const TABLE_HEADER_HEIGHT = 9 * MM;
+const ROW_HEIGHT = 12 * MM;
+const FOOTER_GAP = 5 * MM;
+const FOOTER_TOP_PADDING = 3 * MM;
+const OBSERVATION_HEIGHT = 14 * MM;
+const FOOTER_HEIGHT = FOOTER_GAP + FOOTER_TOP_PADDING + OBSERVATION_HEIGHT + 7 * MM;
+const LOGO_WIDTH = 520;
+const LOGO_HEIGHT = 273;
+const LOGO_JPEG_BASE64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCAERAggDASIAAhEBAxEB/8QAHQABAAMBAAMBAQAAAAAAAAAAAAYHCAUDBAkBAv/EAFMQAAEDAwEDCAIKDgcIAwEAAAABAgMEBREGBxIhCBMxQVFhcYEUIhUWIzJCcoKRobEYN1JVYnN1kpSys8HR0zM1NlZ0ldIXJCVDg5PC8DRTVOL/xAAcAQEBAAIDAQEAAAAAAAAAAAAAAQIFBAYHAwj/xAA6EQEAAQIEAwQGCQIHAAAAAAAAAQIDBAURIQYxQRIicYEHE1GCkfAUFWFykqGxwdEWUiMkMlRik7L/2gAMAwEAAhEDEQA/AN/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADw1lXT0FvnrquVsVPBG6WWRy4RjWplVXwRFM5aQ5WVLqTaPbdP1mlGW+gr6r0ZlctbvqzeVUjVzNxE4ruovHhvdeD4XsTbszFNc6TPJt8tyHHZnbu3sJb7VNuNat4jTnPWY15TtGstJgFMbZtvkGynUNustLYmXirqYHVMzXVXMpAze3WdDXZVyo/s973mV69RZp7dydIfDLMrxWZ4iMLhKO1XOu2sRy3nedIXOCG7LtoFLtL2bUmqKemSklke+GopUk5zmJWLhW72Ezw3VRcJwchMjOiuK6Yqp5S4+Kwt3CXq8PfjSumZiY9kwAAyccAAAHq0tfBV1dXTRr7pSyJG9PFqKi/T9B7QAHiqqmKjopaqd27HExXuXuRBS1DKqhhqo0w2ViPRF7FTIHlAAAHPfd6Rmoo7O53u74llRc8Ono8cZXyOgAAOZfbt7C2la5YOeRHtarEdu9K46QOmDj2HUVLfmS+jwzRPixvtkxjjnGFRePQdgACNXbWtstlQ6miY+rmYuHJGqI1q9iuXr8D0KbaJSPlRtXb5oWL8Nj0fjy4ATQHhpaunrqRlTSTNliemWub1nmAA5d21BbLM1PTJsyKmWwxpvPXy6k8SNv2jRI/EdqkVva6VEX6lAnAI1bNb2ivlbDPv0cjuCc9jdX5SfvwSVFRUygAA59qvFLdoZVgXdkiesckSrxaqKqfMuOCgdAA5d8vUNioGVU0MkqPfzaNZjOcKvX4AdQHH0/fm3+mnmZSugSJ6Mw528q8M5OwAByb1qG32ONvpLnPmemWQx8XKnb3J3ka/2je6/wBULufjuP1ATsHKs2obde419FkVsrUy6GTg5O/vTvQ6oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUdypdae1vYy6xU0u5W36T0RERcKkDfWlXzTdZ8swy1z2vR7Hqx6Llrm8FavUqeBbnKR1p7btuVbTU8u/QWVvsdBheCvauZXeb8t8GIVIsUjYWyujekb1VGvVFw5UxlEXrxlPnQ6dmV/11+ZjlGz9QcCZP9WZRaprjSu5358+UeVOnnq+j+yzXEOt9jVp1TPNG2ZafcrlVcJHNH6smexMorvBUMFbTNYSa72r3rU6ucsFTOraZq/BgZ6safmoi+KqdHTW125aH2K6w0hTJK72ZSJtNI1eFOrl3J1+VFhE70IJDG+oe1lPG6RXJlrWNVVVMZ4IncmT643GTfs26fj48vnxcDhThe3lGZY297ZiKPsonvfrpT7rRnJH1r7Ga7uOiauXFPdYvSaZFXgk8aesifGZ+obKPlzp6+1umdV23UVtdiqoKhlTFj4StXO74KmUXuU+mthvNFqHTFvvttkSSkrqdlTE7OfVc1FTPfxx5Gzya/27c2p5x+joPpTyf6PjqMfRHduxpP3qf5jT4S6IANy8sAD1rhUJS2mqqVXHNxOf8yAVzaL6tLr+eqe7EFXO6OTsRFd6q+S4+ks8oprHujV+6qtbjeVOrJaumb2yv0slRUyIklM1WTuX8FM73mnH5wOXr+7czRxWmJ3rTe6S4+5ReCea/UdjSFR6To6jVVy5jViX5Kqn1YKzuldNd7vU3BzXYcu9j7hicET6vNSb7PKjfs9XSqvGObeRO5yfxRQJieKpqIqSjlqZ3bscbVe5exEPKQrX915ukitETvWl90lx9yi8E81+oCG1F2qp9Quu6PVs6y8638HHQnhjCFuWyviudpgrofeytzj7letPJckBptN87s4lrubzVOd6Szhx3G8MeaZX5j2NAXbmquW0Su9SXMkOfuk6U804+SgWCRrXX9kJPxsf6xJSNa6/sfJ+Nj/WA5Gzj39x8I//ACJTqGqlotL1tTCqtkbEu6qdSrwz9JFtnHv7j4R/+RM7jRR3G1VFDKqo2ZisynV3gVVpqzxXq+JSzyuZE1iyO3V9Z2FRMJ85K7noCkkp960zPhmT4Ezlcx3n0oQ6qo7tp65osiS00rF9SZnvXd6L1+B3bdr+4Quay4wR1MfW9ibj/wCC/QBN7NaYLLaWUUCq7HrPevS9y9Knh1FeG2WxyVSIjpnLuRNXrcvb3JxXyPeoa2muNBHWUkm/FImUXo8l7yEbRZnrU0FPx3Ea9/iuUQCN2+33HUd5c1jlkleu/LNIvBqdq/uQmkGz21NgRKirq5JOtzVRqfNhTy6Bp449MOqGtTnJpXby/F4In1/OSoCrtQ6QqLPCtXTSLUUie+VUw6Px7U7zraFv0r5VstXIrk3VdA5y8Ux0t/enmTiaKOenfDK3eY9qtcnai8FKetTnUerKTm3KvN1TWZTrTe3fqAuQpuK5VVq1JNWUb917ZnoqL0PTeXKL3FydRS/o/peplpN/c56qWPexnGXqmQLWsl6pb3bkqadd16cJIlXixf4dinD2h/2dpv8AEp+q4h7XXbSeoV4c3KzpT4EzP3ov0Eg1Vd6W9aLpaqmdhUqUSSNeljtx3BQPb2df1TW/j0/VQmZDNnX9U1v49P1UJmBTt9nkr9WVbpH4VZ1ibvdDURd1Cc+0OyLRczmoSXH9Nv8AHPbjo8iP6t0zWU90nuVJA6ammdzjkYmVjcvTlOzryc+26uvVtY2JtQlRE3gkc6b2O7PSgE101pRlkllqaiRk9S5Vax7UwjWfxXrJIcTT+paW/Qua1nM1MaZfCq54dqL1odsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ/ajrGPQeya9alVzUnp4FZStX4c7/VjT85UXwRSYGRuV9rX0i82jQNJNmOmb7I1qNX/mORWxNXwbvu+U04mOv+os1V9eni7Hwlk/1tmlnDTGtOutX3Y3n48vNmNzpp51e9XzTSOyq9LpHKv0qqr9JqvaXsYSy8jqzMhpkW8aeT2Rq1anF3PY9JT5OWr4RFT8nfRPtz2429amHft9p/4lU5TKKrFTm2r4vVq47GqbV2naht2ldkOoL1dImT08VHIzmH9E7npuNjX4znInmppMuwlNdi5cucpjT99XrPG/Ed7DZrgsFg96qaoqmI6zPdinziZ+MPmhPE2enfC7ocmC+eR1otNQa1uOpbnTJJS2OJ1LG17ctfNM1Ux37se/+ehRKJhqJ2Jg2byQL7bJ9mV205BBHDX0Ve6qnVvTO2ZE3Xr3puKzwahx8rimu9FNfjHjDd+kK7fw2VXL+H5zHYqn/jVO/wDHvMu7SdIS6E2qXrTDmuSGlqFWmcvwoHetGv5qoniimpOSTrVLts7rdGVc2amzS85TtVeK08qqvD4r99PlNOJyv9FLLQWfX1JF60C+x1aqJ8Byq6Jy+Dt5ufw0KO2Ja19ou2uz3aaXm6Gof6DW8eHNSqiby/FduO+Sp9aP8ljdOn7T/H7NfiYjizhX1kb3YjX36Of4o10+9D6LAJ0A7S/PAcHWVRzGjqtM4WTdiTzcmfoyd4hu0SdW2mjpkz7pKr18Gp//AEBy9HWqO52W8RS4xKjYmr9yqZci+S4I22prrdHW27eWNJfcp2L2tX/3yUsHQUPN6VWRW4WWZzs9yYT9x6GptMPrdWUk1M3EdY7dmVPgq1Mq7zanzoB6lpsat2c3KtkZ7rVRK5ncxi5T51RV+Y8ez2o3L7U06rhJYd5E72r/AAcpYD6aNbc6jY1Gx83zaNTqTGMFV6UldR6zo0cipl6wu80VPrwBa880dPTSTzORscbVc5y9SJxUpu4VVTer3PVJHJJJM5VbG1FcqNToTCdiE219dVgt0Vrid69R68mOpidXmv1KeDZ/asMnu8reLvcos9nwl+fCeSgR9lfq6OFsMb7k2NrUa1qRLhEThj3pymLWW2uinWOSCeNySM5xqtXgvf1F3EU11avTLIlfG3MtKuVx1sXp+bgvzgSC2V8VztMFdD72Vucfcr1p5LlDi66/sfJ+Nj/WOHoG7LFVy2iZy7suZIs9Tk6U804+Snc10irpCTCKvusfQmfhAcjZx7+5eEf/AJE8IHs5RUfccoqcI+lPjExulLUVtonpaWpWmlkarWyInR/70AfsdRb7kyaKOSGpbG/m5G8HIi9ioQXW1htttp4K2hY2B0km46Jq+qvDOUTq6PpOFJT33Tta71amkf0b8ed16ePQqH8ql81DWt3m1NbL71FVPVanj0IgEv2dzPdbK2BV9RkrXNTsVW8fqQ/vaDQPmtdPXxtz6O5Wvx1Ndjj86J852dN2VLJZW073NfO9d+Vzeje7E7kTgdWWKOeB8MzGvjeitc1yZRUXqAgGh79BSK+1VkjY2SP34XuXCby8Favj1FhFZ3zRVdRTOmtkbqqlVcoxvF7O5U6070OMy6XyjZ6MyuroUThze85Md2F6ALL1Hfqey2x676OqpGqkMSLxz90vchANJUElw1XTuwqsgdz8jvDo+dcfSeGgsN6vVTvsglVHL61RUZRvzrxXyLLsVjprHb+YhXfkfxllVOL1/cnYgHUKeo/7bwf49P2hcJT1Gi+3eDgv/wA9P2gFm3yx0t8t6wTepK3KxSonFi/vTtQqi4UFXa66Siq2Kx7Vzw965OpydqF1nKvtipb5b+Zm9SVvGKZE4sX96dqAcHZ1/VNb+PT9VCZkV0VQVVsguFJWRKyRs6eDk3U4ovWhKgPVkuNFFcorfJUsbUytVzI1XiqJ/wC/Qpy9RWK1VtqqamaGOGaONz0qGpuqiomePaniRLUum7zBdprhHz1bG92+krOL2diKidnUqfQceSp1BcI0o5ZbjUtyic0qOXPin8QPZ0fK+PWVHuZ9fea5E7Fav8PoLaIbo/S9Rb6hbncWIybd3Yos5VqL0qvf1YJkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB69fW01ttVTca2VIqamidNLI7oaxqKrl+ZFPmZrPU9VrTaBd9UVeUfcKl0zWKvvI+hjPJiNTyNi8qnWvtd2Pt07Sy7tbfpfR1RF4pTtw6VfP1WfLUx5ojS9TrXaJaNLUu8jrhUtie9qZ5uPpkf5MRy+R1zOL03LlNinp+s/P5vc/RhltGDwN7N8RtFWsRPspp3qnzn/y2JyV9Fe13Y+uoaqLdrb9L6SiqnFKduWxJ5+s/wCWhw+VWur77b7NpDTOm7zcaVXrX1s1FSPlZlMtiYrmpjPF7lT4pomhoqa22umt9FEkVNTRNhijb0MY1ERqJ4IiHnz4m2nBxOHjDxOnz+7zWjieunO6s5rtxXV2pmImdo20p/DGmng+Yd20bq6w0CV180veLbSq9I+fq6N8TN5ehN5yYyuFJnsB1r7SduNrqKibm7fcV9jqvK4ajZFTccvxXoxfDJuDaRpGHXWy286XkRvOVdOvMPd8CZvrRu7sORvlk+ak0M1PUSU87HQzRuVj2LwVjkXCp4oqL8x1/FYacDdpqpnXr8HtfDufW+L8vxGHxFEUz/pmI32qjad+uuvnD6aa50vTa12dXjS9XhGV9M6Jr1+A/pY7ycjV8j5n1tFU2+41Nur4XQ1NPI+CaNeCse1Va5PJUU+iexjWvt92MWe9zSb9ayP0St48Unj9Vyr8bg75RlblS6K9re2T2fpod2iv0XpOUTCJOzDZU8/Ud8pTnZtbi7apxFHzEuoejbG3MuzHEZLidpmZmPvU7Tp4xv7rT2wnW3t52JWm4Ty79fSN9Arc9Kyxoiby/Gbuu+UWSYq5JutPYXadV6Rqpd2lvcW9CirwSoiRVT85m8nyUNqmyy+/66xEzzjaXRuNsn+qs2u2qY0oq71PhPTynWPIPxURyYVEXxP0HNdTfiIiJhERE7j9B+KqIiqq4TvA/T+dxmc7jc9uDM9s22LNyopqmWsxpupVLRHl3qNa1y7k3nIq5X7l3caaGg/FY1y5c1F8UP4lmgpYecmljhjRcbz3I1PpPIVLyjkRdhNWioi/73TdP4xALO9lrX98qT/vN/ieaGppqpqrTzxTInBebejvqMBaV0JqTW09VDpm0trn0rWvmTnI491HKqJ75Uz0Kee66c1xs6utPNcKK5WGpcqrBURSbiOVOndexcKqcOGTLRNW+kYxFyjGovaiH9cF6So9hG0yu13pmqt18kbJd7YrEfOiI30iJ2d16onwkVFRcdy9Zbhirl2zUWn7yqpaL1b61UVUVtNUMeqKnSioi5ToOoYL0Vw28WNyJh3s5GmU6f6c3oWY0DCKmFPxEREwiIiH6Uptr20SaMf7WdMujffJGI+aociObRsXo4db16UReCJxXOUQgt25Xm0WeDnrtdKOgjXofVTNiRfzlQ51DrjRlynSC36rs1TKvBI4qyNXL4JniYmtOmtd7S73NU0NFcL5Vb3u1ZUSZaxV6nSPXCeCL5HXvOw/aXZbc6uqtMrUwsTed6HKyoc1O3dau98yKZaJq3CfioiqiqiKqdBjDZntr1Doe4w0N1qai6WFVRklNM5XyU6fdRKvFMfcLwXuU2Pb6+jutqp7lb6hlRS1MbZYpWLlHtVMoqEmNFeyfjnNYxXOcjWomVVVwiIcfVWp7Vo/SdXqC8Sqympm53W8XSOXg1jU63KvBDG2sNo2t9qOom0DVqkp55Nyls1CrlavYionGR3aq8OxEQRGo1/Ua/0NS1CwVGsLHHKi4Vjq6PKePE61BcLVdaf0m11tHWxZ/paaRsjfnaqmQqPk5bS6m3tqH0VrpHKmUp56tEencu61URfMilxsWvtleoYp6mGvsVXn3Kqp5Pc5e5Hty1/xV80Lomrep/EssUELpppGRxsTLnvVERE7VVSN7Pa3VVx2d26u1lTQU92mj35GRNVq7q+9V7fgvVOKtTgir1dCejteRF2F6qRURU9jZeC+BiqQ0mpdO19zS3UN9ttVWbqv9HgqWSP3Uxld1FVcJlDqGPOTWjU23rhqJ/w6foT8JhsJzkYxXOVEREyqr1FmNB46iop6SmfUVU8cELEy+SVyNa1O1VXghw4deaIqa30SDV1jknzhI210aqq9iceJj3aJrzUG07Xj6aCSplt7qn0e22yNfVXLt1qq3oc93TlejOEwiHv3Pk/7S7ZY1uL7RS1aNbvPpaSoSWZifFwiOXuaqjRNW00VFTKLlD0rnebTZoWS3W5UtE2Rd1izyIzfXsTPSvgUpya4Ncpp6rqbvVy+1z+joaerRVk5xHes6NV4tjTimOhV6MYXPe1/RXKHW0lbLXrb4KllOymubmyrHAxiTc7CrolRzVc90Tulu9jpXcwFWrSVdLX0cdXRVMNTTyJvMmhej2PTtRU4KeYgezCkuEVruFbUwTU9NVyQvijmRUdJI2BjZpsKiLiSRHOyqJve+wm8TwgAAAAAAAAAAAAAAAAAAAAAAAAAAAAQrazrNugtkN61G16Nqo4VipEVffTv9WP5lXPgimNdcUUzVVyhyMJhbmLv0Ye1GtVcxEeMzoxpyitaprLblcG003OUFoT2NpsLlFVi5lcni9VTPY1CzOSBornbheNfVkOWQp7G0TnJ8JcOlcngm43zcZfjZUVVU2KNr6iomejWp0uke5cJ5qq/SfSjZrpCHQeyuzaYj3VlpadPSHp8OZ3rSO83Kvlg63ltE4nEzeq6b+fR7rx3ireR5DayrDzvXEU+7TpNU+c6a+MoDynNcP0nsZktlDUuhuN7l9DidG5WvbEnrSuRU6PVw35aGM9MU+o9V60tem7fdrj6RcallO1fSpPURy+s7p6Gty7yJ/ylNa+27bhV0VNLv0Fkb7Hw4XgsiLmV35/q/IQmfJE0V6frC6a5q4sw22P0OkVU6ZpEy9yfFZhP+oY4iqcZjOxHLl5RzfbJbNHDHC84u7THrKo7W/8AdVtRHltrHi1za7dTWmyUlqo0clPSwsgj3nby7rWo1MqvSuE6TC3KY0V7VNt1TcKaLcob4z0+JUTgkucTN/Ow75ZvQrva9smt+1nTNFbqm5OtlVRVHPw1jIUlVqK3dezdVU4Lw6+lqG5zDCzfs9miN45PLeCuIacozSL+Iq/w64mK53nnvE7eydPLVnnkj619jNdXHRNXLiC7R+k0qKvBJ409ZE+NHx/6Zd/KN0UusNh1fLTQc5cLQvslT4TLlRiLzjU8WK7zRCC6e5JsumtWW3UNt2jTNq6CpZUxZtjcKrVzhfdOhUyi9yqaTexkkSxvajmuTCtVMoqdh8cHhrn0eqxfjT2fP2NnxRnmB+u7Wb5Tc7U7TVGlUb07dYjaqnbb7fa+W1nu1bYtQUN7tkqsq6KdlTA9Pumqjk8lxjwU+mml9QUWqtGWzUducjqa4UzKhmFzu7yZVq96LlF70M813I3tFRdKmej1xV0tPJK98VP6A1/NNVyqjN7fTOEwmcdRc+yzQE+zXQbdLPv8l4p4p3ywSSQJCsTXrlWYRy5Te3l+UfHK8Nfw9dUXI7s/bHNsvSBn2T53hrV3B3dbtE8uzVHdnnvMabTEdfamwAN28pCrdvOt/ajsvmo6SbcuV23qSDC8WMVPdH+TVwne5C0lXCZMPbZ9ae3XanWVNLNv26hzRUfHLVa1V3np8Z2V8EaWISUfl0bdItl0GuHMxbpq91AiY4phuUfnsVyOb4tNc7EtcLrXZfTOq5t+527FHV5Xi5Wp6knym4XxRxTlXtc2c1Gw3/Z0yxX1sTaFII5ljh4TN9ZJff8A/wBnrL4qRHYhrf2mbUaZKubcttzxR1eV9ViqvucnyXLjPY5xZ3G2SpuUb9omr/xdN+0QtkqblG/aJq/8XTftEJCqv5Ml2tdqvmo33S5UdE2SCBGLUzNiRyo5+cbypk7PKN17pS86TotM2a5Utyrm1jamR9K9JGQNaxyYVycN5d7oRehFz1Fa7MNn8O0LTmrLfGyNLpSwQVFBK/qk3n5Yv4L0TC9nBeohdphtdLq6lptVQVkVviqObro4F3Jo2ouHYyi4VF6U7lwZabovPkr2msW9agvqsc2kSGOjRypwfJvb6ongmPzkNNnI0xabBZdKUVDpmnghtaRo+DmFy17XJnf3vhKuc5Xip1zGVYM0X9vax/l2P9ubzMGaL+3tY/y5H+3N5llIeCsqY6K3T1k2ebhjdK7HY1FVfqMEUMVw2i7VYIpplSrvlwRXyrx3Ee7Kr4NbnCfgobyu1GtxsNbb0XC1FPJDlereaqfvMH6HuiaN2rWa5XNjo2W6uRtUipxY1FWN/DuRVXyFJLdVhsVr01p6lstmpWU1HTMRkbG9faqr1uXpVetTpH8QyxT07JoJGyRvajmPYuUciplFRetFQ/sxVlrlK6FoLPdqHWNrgbAlxldBWRsbhqzIm82TxciORe1URelVJnyYtQT3HZ1cLFO9z/YuqTmlVfexyorkb5OR/wA5yOVJqOk9iLNpSKRr6p0618rUXjGxrXMbn4yudj4qnscle2Tw6V1Bd3sVIqqqjgjVfhc2xVVU85MeRl0Tq4fKl1BUSX6yaXjeqU8ULq+RqLwc9zlYzPgjX/nEm5NOjKOh0VLrOpga+vuEj4oJHJlY4GLu4b2bzkVV7kaQrlR2uaDaHZ7wrF5ipoFgR/VvxyKqp80iKWnydb7SXTYpSWyJ7fSbXLJTTR54pl6vY7HYqO+hewdDqmurdd6W0NT0s2prl6G2qe5kOInyK5WpleDUVcJlOPeQ2t247G7jTpBcLxHVRNe2RI57dM9qOauWuwrOlFRFRT19rOx+8bStS0VdFqSnoKSjp1ijp307pF3nOy52UcnThqeRRG0zY5WbNbFRXKpv0FwSqqPR0jjp3Rq1d1XZyrlz0EiIGtNJa301rigqKzTNetZDTypDK5YXx7rlajsYciZ4Khy9rv2jNVfk2X6it+Sv/Ye//lFv7FpZG137RmqvybL9Q6qzlybPt3r+Tp/1mGvaqFKmimp1crUkY5iqnSmUwZC5Nn271/J0/wCsw2EKuaQ+flO+67P9pUUktM1LjZa5HLDMi7rnMd19zk4oqdSoqGotM8o7QV5bHDeHVNiqXcFSqZvw57pG9Xe5EJZrjZXo/X6JLeqF0dc1u6yvpXc3MidirhUcnc5F7sGdNo2wC86KstRf7Vc2Xa106b8yOZzc8LPulRMo5E61TC9eC7SNdUtTS1lHHV0VRFUU8rd+OWJyOY9F60VOCoeYyryZ9YXCk1rPoyaeSS31kD6iCJVykMrMKqt7Ec3OU7URe01USY0UABAAAAAAAAAAAAAAAAAAAAAAAAAAAAyFyvda+majtOg6SXMVEz0+sai/816K2Nq+DN53y0NelMam5M2hNW6vuOpbxddRPra+ZZpdyqYjUXoRrU5vg1EREROxDg5hau3rXq7XXn4O28F5jgMtzGMZj5nSiJ7Oka96dvyjXz0YbtF1rbFfqO822RkdZRzNnge+NsiNe1ctXdciouF48ULLXlK7Z1bj23R/5fT/AOg0H9iJsy++Wpf0uP8Alj7ETZl98tS/pcf8s01vLcZbjSidPCXqeM464XxtUVYq125jl2rcTp8WJ5ZZJ55J5nukkkcr3vcuVc5Vyqr3qqk90jtq2iaF00ywaYu9NR0DZHy82tFFIqvcuVVXOaqqv7kQ039iJsy++Wpf0uP+WPsRNmX3y1L+lx/yzGjK8XbntUTpPi+uL9IPDeMt+qxNE1089JoiY+EqC+yb2y/3mpf8ug/0j7JvbL/eal/y6D/SX79iJsy++Wpf0uP+WPsRNmX3y1L+lx/yz7fQ8w/vn8Utb/VHBn+1p/6qVBfZN7Zf7zUv+XQf6TRHJw2uXjaPZLvbtVVkNReqCVsrZGRNi5yB6YT1Woieq5HIq97T1PsRNmX3y1L+lx/yyUaA2BaQ2cawTUenrnfVqeZfTviqahj45GOxlHIjEXgqIqcelDkYXD423diq5VrHXdpOIs64VxuAuWcFZ7F3nTMW4p3jprHSeX5rVABu3k4AAKw2664XR2y+eCkm3LndM0dNhfWYip7pIng1fnc0obYdstoNoFzuNZfo5/YiiY2JEhkWNZJncURHJ1NamV+M00RrvZDp3aHeqe5X64XdjqeHmYoaaZrI2oq5VcK1eKrjK56kJBozRtm0JpWOwWNs3o7ZHSukncjpJHuXKucqImV6E6OhELrsiCfY37Mv/wAdz/TnlJbcdllBs+ulurLCyf2IrWOiVJpFkWOZvFU3l6nNVFT4rjZBwNZaOs+utKS2C9tm9He9kjZIXI2SNzVyjmqqLhelOjoVREmiJ7DtcLrPZhAyrm37pbMUdVleL8J6ki/Gb9KOPR5Rv2iav/F037RDs6E2Q6d2eXuouVhuF3c6oi5mWGpma+N6Zyi4RqcUXOF717SQay0fatc6Vk0/eZKplJJIyVVpnox+WrlOKovX3DqqgeSr/X+pv8PT/rvPzlH7OForimv7RB/u9Q5sdxYxPeSdDZfB3Bq9+F61Ln0Hsq01s6q66osM1wkfWMYyX0uZsiIjVVUxhqY98pLbnbaK8WeqtVyp2VFJVROhmienBzVTCoNd0Z55OO0tVxs9vVR0Ir7XI9erpdDnu4ub3bydSGkSutObDtnOmquCtpbNJVVkD2yRVVbO+V7HIuUVEyjUXPcWKJV8+7Tdo7DtNpL5NC+eOhuaVLomKiOejJVcqIq8EXgaD+yqsX90bp/34jtTcmbQE9TJO+vvyOke564qWYyq5X4Hefx9jDs+++F//SY/9BdYRI9mm2GzbSbhXUFJbqm31VLG2Xmqh7Xc4xVwrkVvYuEXxQqXb7skrqa91OutOUb6ijqV5y4U8Lcuhk65UROlrul3YuV6F4WnpHYZpTRWrKfUNmuV7SqgRzd2adjmPa5MK1yIxMp1+KIWcTXTkrFuz7bpqrQ1tjtL4obxaY/6KnqHq18KdjJEz6vcqKidWCZXnlT3apt74bFpanoahyKiT1VQs+53oxGtRV8VLb1LsP2c6nrH1lTZVoap65fPbpFgV69qtT1VXvwcSh5Nezekqmyztu1c1FzzVRV4YvjuI1fpLrCM12HT+r9q2vZGQvmr6+oeklXXz8WQt6N969CIidDU6cIiIba0npm3aP0dQ6dtbV9HpI93fd76Ry8XPd3uVVVfE9qzWKzadtbLdY7ZTW+lZ0RU8aMRV7Vx0r3rxOgSZ1VC9qGgafaHoOazrIyCtidz9FUOTKRyoi4RfwXIqtXxz1GQbVd9a7I9fS81HLbblD7nUUtQ3ejnZnoVOh7V6Uci96KbyOHqXR+mdX0LaTUlmpbhGzix0jcPj+K9MOb5KIlFIUfKrpPY9vsho6p9LROPo9U1Y3L3byZT6Srdp21+7bSY6akqbbS263UsqzRRMcsj1cqK3LnrjqVeCInmXzPyZtnMtQskct7gaq55qOrRWp4K5qr9JJ9N7GdnWmJ46mh09FUVUfFtRXOWoei9qb3BF8EQusCHcmWzXW2bO7lVXGgnpYq2tSamWZu6srEja3eRF44yi4XrJztd+0Zqr8my/UTXGDmaisVHqbStfYLg+ZlLXQugldC5GvRq9OFVFwvkYqyhybPt3r+Tp/1mGvqiV0NJLMyGSZzGK5Io8bz1RM7qZVEyvRxUrzROxXSeg9ULfrPVXWWp5l8G7VTNezdcqKvBGpx9VCxyzJDIruUJre37U6y7VtG5KDK0z7DOqxpA1qrhM4ykqccuVOOcYwiY6Gv+UX7adDVenrNp+agdXRrDUVFTM16tYvvmsRqdKpwyvQirwL21jsq0Rrif0q92hErcI302mesMyonUrk998pFIpQcmzZtR1rZ547rXsaueZqav1F8dxGqvzjWEVZyadK19ftEl1Y6JzLfboZIWyqnCSaRMbqduG5VezKdprI9S22y32e1w221UUFHSQt3Y4IGIxjU7kQ9sTOqgAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/9k=';
 const cp1252Extra = {
     '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87,
     'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a, '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e, '‘': 0x91,
@@ -1268,7 +1280,32 @@ const toCp1252Byte = (character) => {
     return simplifiedCode && simplifiedCode >= 32 && simplifiedCode <= 126 ? simplifiedCode : 63;
 };
 const pdfHex = (value) => `<${Array.from(value).map((character) => toCp1252Byte(character).toString(16).padStart(2, '0')).join('')}>`;
+const base64ToHex = (value) => {
+    const binary = atob(value);
+    let output = '';
+    for (let index = 0; index < binary.length; index += 1) {
+        output += binary.charCodeAt(index).toString(16).padStart(2, '0');
+    }
+    return output;
+};
 const number = (value) => Number(value.toFixed(2)).toString();
+const color = (hex) => {
+    const normalized = hex.replace('#', '');
+    return [0, 2, 4].map((offset) => parseInt(normalized.slice(offset, offset + 2), 16) / 255);
+};
+const COLORS = {
+    red: color('#c51a2e'),
+    redDark: color('#9f1525'),
+    dark: color('#272a2f'),
+    text: color('#2f3338'),
+    muted: color('#777c84'),
+    border: color('#d7d9dd'),
+    borderStrong: color('#b9bdc3'),
+    soft: color('#f8f9fa'),
+    cream: color('#fffdfa'),
+    meta: color('#f5f5f2'),
+    white: [1, 1, 1],
+};
 const estimateTextWidth = (value, fontSize, bold = false) => {
     const factor = bold ? 1.04 : 1;
     return Array.from(value).reduce((width, character) => {
@@ -1290,10 +1327,33 @@ const truncateText = (value, maxWidth, fontSize, bold = false) => {
     if (estimateTextWidth(cleaned, fontSize, bold) <= maxWidth)
         return cleaned;
     let output = cleaned;
-    while (output.length > 1 && estimateTextWidth(`${output}…`, fontSize, bold) > maxWidth) {
+    while (output.length > 1 && estimateTextWidth(`${output}…`, fontSize, bold) > maxWidth)
         output = output.slice(0, -1);
-    }
     return `${output.trimEnd()}…`;
+};
+const wrapText = (value, maxWidth, fontSize, bold = false, maxLines = 2) => {
+    const words = value.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    if (!words.length)
+        return ['—'];
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (!current || estimateTextWidth(candidate, fontSize, bold) <= maxWidth) {
+            current = candidate;
+            continue;
+        }
+        lines.push(current);
+        current = word;
+        if (lines.length === maxLines - 1)
+            break;
+    }
+    if (current && lines.length < maxLines)
+        lines.push(current);
+    const consumed = lines.join(' ').split(' ').length;
+    if (consumed < words.length)
+        lines[lines.length - 1] = truncateText(`${lines[lines.length - 1]} ${words.slice(consumed).join(' ')}`, maxWidth, fontSize, bold);
+    return lines.slice(0, maxLines);
 };
 const formatDate = (value) => {
     const parsed = new Date(`${value}T12:00:00`);
@@ -1309,18 +1369,21 @@ const statusLabels = {
     blocked: 'Bloquée',
 };
 function createArtisanPlanningPdf({ artisan, rows }) {
-    const rowsPerPage = Math.max(1, Math.floor((PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - TABLE_HEADER_HEIGHT - MARGIN) / ROW_HEIGHT));
+    const availableRowsHeight = PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - HEADER_HEIGHT - SECTION_GAP - INFO_HEIGHT - SECTION_GAP - TABLE_HEADER_HEIGHT - FOOTER_HEIGHT;
+    const rowsPerPage = Math.max(1, Math.floor(availableRowsHeight / ROW_HEIGHT));
     const chunks = rows.length
         ? Array.from({ length: Math.ceil(rows.length / rowsPerPage) }, (_, index) => rows.slice(index * rowsPerPage, (index + 1) * rowsPerPage))
         : [[]];
     const pages = chunks.map(() => ({ commands: [] }));
+    const fixedWidths = [28, 35, 42, 58, 38, 24].map((value) => value * MM);
     const columns = [
-        { label: 'DATE', width: 72 },
-        { label: 'CHANTIER', width: 126 },
-        { label: 'VILLE', width: 102 },
-        { label: 'INTERVENTION', width: 165 },
-        { label: 'STATUT', width: 82 },
-        { label: 'NOTE', width: PAGE_WIDTH - MARGIN * 2 - 72 - 126 - 102 - 165 - 82 },
+        { label: 'DATE PRÉVUE', width: fixedWidths[0] },
+        { label: 'CHANTIER', width: fixedWidths[1] },
+        { label: 'CLIENT', width: fixedWidths[2] },
+        { label: 'ADRESSE / VILLE', width: fixedWidths[3] },
+        { label: 'ÉTAPE', width: fixedWidths[4] },
+        { label: 'STATUT', width: fixedWidths[5] },
+        { label: 'NOTE', width: CONTENT_WIDTH - fixedWidths.reduce((sum, value) => sum + value, 0) },
     ];
     const addCommand = (page, command) => page.commands.push(command);
     const fillRect = (page, x, yTop, width, height, rgb) => {
@@ -1329,90 +1392,174 @@ function createArtisanPlanningPdf({ artisan, rows }) {
     const strokeRect = (page, x, yTop, width, height, rgb, lineWidth = .6) => {
         addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re S`);
     };
-    const drawText = (page, value, x, yTop, fontSize, bold = false, rgb = [.15, .16, .18]) => {
+    const drawLine = (page, x1, yTop1, x2, yTop2, rgb, lineWidth = .6) => {
+        addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x1)} ${number(PAGE_HEIGHT - yTop1)} m ${number(x2)} ${number(PAGE_HEIGHT - yTop2)} l S`);
+    };
+    const drawText = (page, value, x, yTop, fontSize, bold = false, rgb = COLORS.text) => {
         addCommand(page, `BT /${bold ? 'F2' : 'F1'} ${number(fontSize)} Tf ${rgb.map(number).join(' ')} rg 1 0 0 1 ${number(x)} ${number(PAGE_HEIGHT - yTop - fontSize)} Tm ${pdfHex(value)} Tj ET`);
     };
-    const drawRightText = (page, value, right, yTop, fontSize, bold = false, rgb = [.15, .16, .18]) => {
-        drawText(page, value, right - estimateTextWidth(value, fontSize, bold), yTop, fontSize, bold, rgb);
+    const drawCenteredText = (page, value, x, width, yTop, fontSize, bold = false, rgb = COLORS.text) => {
+        drawText(page, value, x + Math.max(0, (width - estimateTextWidth(value, fontSize, bold)) / 2), yTop, fontSize, bold, rgb);
+    };
+    const drawWrappedText = (page, value, x, yTop, maxWidth, fontSize, bold = false, rgb = COLORS.text, maxLines = 2, lineHeight = fontSize * 1.18) => {
+        wrapText(value, maxWidth, fontSize, bold, maxLines).forEach((line, index) => drawText(page, line, x, yTop + index * lineHeight, fontSize, bold, rgb));
+    };
+    const drawImage = (page, x, yTop, width, height) => {
+        addCommand(page, `q ${number(width)} 0 0 ${number(height)} ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} cm /Im1 Do Q`);
     };
     pages.forEach((page, pageIndex) => {
-        fillRect(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, [1, 1, 1]);
-        fillRect(page, 0, 0, PAGE_WIDTH, 8, [.77, .04, .09]);
-        drawText(page, 'MAISONS ARLOGIS', MARGIN, 27, 17, true, [.77, .04, .09]);
-        drawText(page, 'PLANNING PRÉVISIONNEL ENTREPRISE', MARGIN, 52, 9, true, [.36, .38, .42]);
-        drawText(page, artisan.company || 'Entreprise', MARGIN, 67, 15, true);
+        fillRect(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, COLORS.white);
+        let cursorY = MARGIN_TOP;
+        const brandWidth = 64 * MM;
+        const metaWidth = 54 * MM;
+        const titleWidth = CONTENT_WIDTH - brandWidth - metaWidth;
+        fillRect(page, MARGIN_X, cursorY, brandWidth, HEADER_HEIGHT, COLORS.cream);
+        fillRect(page, MARGIN_X + brandWidth, cursorY, titleWidth, HEADER_HEIGHT, COLORS.white);
+        fillRect(page, MARGIN_X + brandWidth + titleWidth, cursorY, metaWidth, HEADER_HEIGHT, COLORS.meta);
+        strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, HEADER_HEIGHT, COLORS.border, .7);
+        drawLine(page, MARGIN_X + brandWidth, cursorY, MARGIN_X + brandWidth, cursorY + HEADER_HEIGHT, COLORS.border, .55);
+        drawLine(page, MARGIN_X + brandWidth + titleWidth, cursorY, MARGIN_X + brandWidth + titleWidth, cursorY + HEADER_HEIGHT, COLORS.border, .55);
+        const logoBoxWidth = 58 * MM;
+        const logoBoxHeight = 21 * MM;
+        const logoRatio = LOGO_WIDTH / LOGO_HEIGHT;
+        const renderedLogoHeight = logoBoxHeight;
+        const renderedLogoWidth = Math.min(logoBoxWidth, renderedLogoHeight * logoRatio);
+        drawImage(page, MARGIN_X + (brandWidth - renderedLogoWidth) / 2, cursorY + (HEADER_HEIGHT - renderedLogoHeight) / 2, renderedLogoWidth, renderedLogoHeight);
+        const titleX = MARGIN_X + brandWidth + 5 * MM;
+        drawText(page, "CONDUCT'HOME · PLANNING ENTREPRISE", titleX, cursorY + 6 * MM, 5, true, COLORS.redDark);
+        drawText(page, truncateText(`Planning prévisionnel — ${artisan.company || 'Entreprise'}`, titleWidth - 10 * MM, 17, true), titleX, cursorY + 10.4 * MM, 17, true, color('#25282d'));
+        drawText(page, 'Prochaines interventions programmées sur les chantiers Maisons ARLOGIS.', titleX, cursorY + 20.2 * MM, 7, false, color('#6a6e75'));
+        const metaX = MARGIN_X + brandWidth + titleWidth;
+        drawCenteredText(page, "DATE D'ÉDITION", metaX, metaWidth, cursorY + 6.2 * MM, 5, true, color('#858990'));
         const editionDate = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
-        drawRightText(page, `Édité le ${editionDate}`, PAGE_WIDTH - MARGIN, 34, 8.5, false, [.42, .44, .48]);
-        drawRightText(page, `${rows.length} intervention${rows.length > 1 ? 's' : ''} à venir`, PAGE_WIDTH - MARGIN, 52, 10, true);
-        let x = MARGIN;
-        const tableTop = HEADER_HEIGHT;
-        columns.forEach((column) => {
-            fillRect(page, x, tableTop, column.width, TABLE_HEADER_HEIGHT, [.16, .17, .19]);
-            drawText(page, column.label, x + 7, tableTop + 9, 7.7, true, [1, 1, 1]);
-            x += column.width;
+        drawCenteredText(page, editionDate, metaX, metaWidth, cursorY + 11 * MM, 8, true, color('#2c2f34'));
+        drawCenteredText(page, "Document à transmettre à l'entreprise", metaX, metaWidth, cursorY + 17.3 * MM, 5, false, color('#9a9da3'));
+        cursorY += HEADER_HEIGHT + SECTION_GAP;
+        const infoGap = 2 * MM;
+        const infoAvailable = CONTENT_WIDTH - infoGap * 2;
+        const infoRatios = [1.3, 1, .8];
+        const ratioTotal = infoRatios.reduce((sum, value) => sum + value, 0);
+        const infoWidths = infoRatios.map((value) => infoAvailable * value / ratioTotal);
+        const infoCards = [
+            { label: 'ENTREPRISE', strong: artisan.company || 'Entreprise', small: artisan.contactName || 'Contact non renseigné' },
+            { label: 'TÉLÉPHONE', strong: artisan.phone || '—', small: artisan.email || artisan.orderEmail || 'E-mail non renseigné' },
+            { label: 'INTERVENTIONS À VENIR', strong: String(rows.length), small: 'hors étapes terminées' },
+        ];
+        let infoX = MARGIN_X;
+        infoCards.forEach((card, index) => {
+            const width = infoWidths[index];
+            fillRect(page, infoX, cursorY, width, INFO_HEIGHT, COLORS.soft);
+            fillRect(page, infoX, cursorY, 1.6 * MM, INFO_HEIGHT, COLORS.red);
+            strokeRect(page, infoX, cursorY, width, INFO_HEIGHT, color('#dfe1e4'), .55);
+            drawText(page, card.label, infoX + 4.5 * MM, cursorY + 3 * MM, 5, true, COLORS.muted);
+            drawText(page, truncateText(card.strong, width - 8 * MM, 12, true), infoX + 4.5 * MM, cursorY + 6.5 * MM, 12, true, color('#282b30'));
+            drawText(page, truncateText(card.small, width - 8 * MM, 6), infoX + 4.5 * MM, cursorY + 11.2 * MM, 6, false, color('#737780'));
+            infoX += width + infoGap;
         });
+        cursorY += INFO_HEIGHT + SECTION_GAP;
+        let columnX = MARGIN_X;
+        columns.forEach((column) => {
+            fillRect(page, columnX, cursorY, column.width, TABLE_HEADER_HEIGHT, COLORS.dark);
+            drawText(page, column.label, columnX + 2 * MM, cursorY + 3 * MM, 6, true, COLORS.white);
+            drawLine(page, columnX + column.width, cursorY, columnX + column.width, cursorY + TABLE_HEADER_HEIGHT, color('#454950'), .45);
+            columnX += column.width;
+        });
+        strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, TABLE_HEADER_HEIGHT, COLORS.borderStrong, .65);
+        cursorY += TABLE_HEADER_HEIGHT;
         const pageRows = chunks[pageIndex];
         if (!pageRows.length) {
-            strokeRect(page, MARGIN, tableTop + TABLE_HEADER_HEIGHT, PAGE_WIDTH - MARGIN * 2, ROW_HEIGHT * 2, [.87, .88, .9]);
-            drawText(page, 'Aucune intervention future programmée avec cette entreprise.', MARGIN + 12, tableTop + TABLE_HEADER_HEIGHT + 19, 10, false, [.42, .44, .48]);
+            const emptyHeight = 28 * MM;
+            strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, emptyHeight, COLORS.borderStrong, .6);
+            drawCenteredText(page, 'Aucune intervention future programmée avec cette entreprise.', MARGIN_X, CONTENT_WIDTH, cursorY + 11 * MM, 8, true, COLORS.muted);
+            cursorY += emptyHeight;
         }
         else {
             pageRows.forEach((row, rowIndex) => {
-                const y = tableTop + TABLE_HEADER_HEIGHT + rowIndex * ROW_HEIGHT;
-                if (rowIndex % 2 === 1)
-                    fillRect(page, MARGIN, y, PAGE_WIDTH - MARGIN * 2, ROW_HEIGHT, [.975, .975, .97]);
-                strokeRect(page, MARGIN, y, PAGE_WIDTH - MARGIN * 2, ROW_HEIGHT, [.88, .89, .9], .45);
-                const status = row.overdue ? 'En retard' : statusLabels[row.stage.status];
+                const background = rowIndex % 2 === 1 ? COLORS.soft : COLORS.white;
+                fillRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, ROW_HEIGHT, background);
+                strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, ROW_HEIGHT, color('#d7d9dc'), .42);
+                const address = row.project.address
+                    ? `${row.project.address} · ${row.project.postalCode ?? ''} ${row.project.city ?? ''}`.trim()
+                    : row.project.city || '—';
                 const values = [
                     formatDate(row.plannedDate),
                     row.project.name || 'Sans nom',
-                    row.project.city || row.project.address || '—',
+                    row.project.clientName || '—',
+                    address,
                     row.definition.label || '—',
-                    status,
+                    row.overdue ? 'En retard' : statusLabels[row.stage.status],
                     row.stage.note || '—',
                 ];
-                let cellX = MARGIN;
+                let cellX = MARGIN_X;
                 values.forEach((value, columnIndex) => {
                     const column = columns[columnIndex];
-                    const bold = columnIndex === 0 || columnIndex === 1;
-                    const color = columnIndex === 4 && row.overdue ? [.72, .06, .1] : [.17, .18, .21];
-                    drawText(page, truncateText(value, column.width - 14, 8.2, bold), cellX + 7, y + 7.5, 8.2, bold, color);
+                    if (columnIndex > 0)
+                        drawLine(page, cellX, cursorY, cellX, cursorY + ROW_HEIGHT, color('#cfd2d6'), .35);
+                    if (columnIndex === 0) {
+                        drawText(page, truncateText(value, column.width - 4 * MM, 7.5, true), cellX + 2 * MM, cursorY + 4.1 * MM, 7.5, true, COLORS.redDark);
+                    }
+                    else if (columnIndex === 5) {
+                        const statusColors = row.overdue
+                            ? { bg: color('#fff0f1'), fg: color('#a61f2e') }
+                            : row.stage.status === 'in_progress'
+                                ? { bg: color('#fff7e6'), fg: color('#9a5a09') }
+                                : row.stage.status === 'scheduled'
+                                    ? { bg: color('#eef5fb'), fg: color('#285f89') }
+                                    : row.stage.status === 'blocked'
+                                        ? { bg: color('#fff0f1'), fg: color('#a61f2e') }
+                                        : { bg: color('#eef2f7'), fg: color('#434851') };
+                        const label = truncateText(value, column.width - 4 * MM, 5.5, true);
+                        const pillWidth = Math.min(column.width - 4 * MM, estimateTextWidth(label, 5.5, true) + 3 * MM);
+                        fillRect(page, cellX + 2 * MM, cursorY + 3.7 * MM, pillWidth, 5.5 * MM, statusColors.bg);
+                        drawText(page, label, cellX + 3 * MM, cursorY + 5.1 * MM, 5.5, true, statusColors.fg);
+                    }
+                    else {
+                        const fontSize = 7;
+                        drawWrappedText(page, value, cellX + 2 * MM, cursorY + 3.2 * MM, column.width - 4 * MM, fontSize, false, COLORS.text, 2, 8.2);
+                    }
                     cellX += column.width;
                 });
+                cursorY += ROW_HEIGHT;
             });
         }
-        const footerY = PAGE_HEIGHT - FOOTER_HEIGHT;
-        fillRect(page, MARGIN, footerY, PAGE_WIDTH - MARGIN * 2, .7, [.86, .87, .89]);
-        drawText(page, "Planning indicatif généré depuis Conduct'Home — À confirmer avec le conducteur de travaux", MARGIN, footerY + 10, 7.3, false, [.48, .5, .54]);
-        drawRightText(page, `Page ${pageIndex + 1}/${pages.length}`, PAGE_WIDTH - MARGIN, footerY + 10, 7.3, true, [.48, .5, .54]);
+        const footerY = PAGE_HEIGHT - MARGIN_BOTTOM - (FOOTER_HEIGHT - FOOTER_GAP);
+        drawLine(page, MARGIN_X, footerY - FOOTER_TOP_PADDING, MARGIN_X + CONTENT_WIDTH, footerY - FOOTER_TOP_PADDING, color('#d4d6da'), .55);
+        const observationWidth = Math.max(80 * MM, CONTENT_WIDTH * .72);
+        drawText(page, 'Observations entreprise', MARGIN_X, footerY, 6, true, color('#555b64'));
+        strokeRect(page, MARGIN_X, footerY + 4 * MM, observationWidth, OBSERVATION_HEIGHT, color('#c8ccd1'), .55);
+        const footerText = "Planning indicatif généré depuis Conduct'Home · À confirmer avec le conducteur de travaux";
+        drawWrappedText(page, footerText, MARGIN_X + observationWidth + 5 * MM, footerY + 7 * MM, CONTENT_WIDTH - observationWidth - 5 * MM, 5, false, color('#8c9096'), 2, 6.2);
+        if (pages.length > 1)
+            drawText(page, `Page ${pageIndex + 1}/${pages.length}`, PAGE_WIDTH - MARGIN_X - 28, PAGE_HEIGHT - MARGIN_BOTTOM - 6, 5, true, color('#8c9096'));
     });
-    const objectCount = 4 + pages.length * 2;
+    const logoHex = base64ToHex(LOGO_JPEG_BASE64);
+    const objectCount = 5 + pages.length * 2;
     const objects = new Array(objectCount + 1).fill('');
     objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-    const pageObjectNumbers = pages.map((_, index) => 5 + index * 2);
+    const pageObjectNumbers = pages.map((_, index) => 6 + index * 2);
     objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((value) => `${value} 0 R`).join(' ')}] /Count ${pages.length} >>`;
     objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
     objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    objects[5] = `<< /Type /XObject /Subtype /Image /Width ${LOGO_WIDTH} /Height ${LOGO_HEIGHT} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${logoHex.length + 1} >>\nstream\n${logoHex}>\nendstream`;
     pages.forEach((page, index) => {
-        const pageObjectNumber = 5 + index * 2;
+        const pageObjectNumber = 6 + index * 2;
         const contentObjectNumber = pageObjectNumber + 1;
         const stream = page.commands.join('\n');
         const streamLength = new TextEncoder().encode(stream).length;
-        objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${number(PAGE_WIDTH)} ${number(PAGE_HEIGHT)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
+        objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${number(PAGE_WIDTH)} ${number(PAGE_HEIGHT)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
         objects[contentObjectNumber] = `<< /Length ${streamLength} >>\nstream\n${stream}\nendstream`;
     });
     const encoder = new TextEncoder();
     let pdf = '%PDF-1.4\n';
     const offsets = [0];
-    for (let index = 1; index < objects.length; index++) {
+    for (let index = 1; index < objects.length; index += 1) {
         offsets[index] = encoder.encode(pdf).length;
         pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
     }
     const xrefOffset = encoder.encode(pdf).length;
     pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
-    for (let index = 1; index < objects.length; index++) {
+    for (let index = 1; index < objects.length; index += 1)
         pdf += `${offsets[index].toString().padStart(10, '0')} 00000 n \n`;
-    }
     pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
     return new Blob([encoder.encode(pdf)], { type: 'application/pdf' });
 }
@@ -1424,7 +1571,6 @@ const sanitizePlanningFileName = (value) => value
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 exports.sanitizePlanningFileName = sanitizePlanningFileName;
-
 
 },
 "src/lib/outlookDraft": function(module, exports, require) {
@@ -1438,37 +1584,91 @@ const blobToBase64 = (blob) => new Promise((resolve, reject) => {
     reader.readAsDataURL(blob);
 });
 const sanitizeHeader = (value) => value.replace(/[\r\n]+/g, ' ').trim();
-async function createOutlookDraft({ to, subject, body, attachments = [], fileName }) {
-    const boundary = `----ConductHome-${Date.now()}`;
+const encodeBlobPart = async ({ blob, name, mimeType }) => {
+    const encoded = await blobToBase64(blob);
+    const lines = encoded.match(/.{1,76}/g)?.join('\r\n') ?? '';
+    return {
+        lines,
+        safeName: name.replaceAll('"', ''),
+        contentType: mimeType || blob.type || 'application/octet-stream',
+    };
+};
+async function createOutlookDraft({ to, subject, body, htmlBody, inlineImages = [], attachments = [], fileName }) {
+    const stamp = Date.now();
+    const mixedBoundary = `----ConductHomeMixed-${stamp}`;
+    const relatedBoundary = `----ConductHomeRelated-${stamp}`;
+    const alternativeBoundary = `----ConductHomeAlternative-${stamp}`;
+    const hasRichBody = Boolean(htmlBody || inlineImages.length);
     let content = [
         'X-Unsent: 1',
         `To: ${sanitizeHeader(to)}`,
         `Subject: ${sanitizeHeader(subject)}`,
         'MIME-Version: 1.0',
-        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
         '',
-        `--${boundary}`,
-        'Content-Type: text/plain; charset="UTF-8"',
-        'Content-Transfer-Encoding: 8bit',
-        '',
-        body,
         '',
     ].join('\r\n');
-    for (const attachment of attachments) {
-        const encoded = await blobToBase64(attachment.blob);
-        const lines = encoded.match(/.{1,76}/g)?.join('\r\n') ?? '';
-        const safeName = attachment.name.replaceAll('"', '');
+    if (hasRichBody) {
         content += [
-            `--${boundary}`,
-            `Content-Type: ${attachment.mimeType || attachment.blob.type || 'application/octet-stream'}; name="${safeName}"`,
-            `Content-Disposition: attachment; filename="${safeName}"`,
-            'Content-Transfer-Encoding: base64',
+            `--${mixedBoundary}`,
+            `Content-Type: multipart/related; boundary="${relatedBoundary}"`,
             '',
-            lines,
+            `--${relatedBoundary}`,
+            `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
+            '',
+            `--${alternativeBoundary}`,
+            'Content-Type: text/plain; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            body,
+            '',
+            `--${alternativeBoundary}`,
+            'Content-Type: text/html; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            htmlBody || body,
+            '',
+            `--${alternativeBoundary}--`,
+            '',
+        ].join('\r\n');
+        for (const image of inlineImages) {
+            const encoded = await encodeBlobPart(image);
+            content += [
+                `--${relatedBoundary}`,
+                `Content-Type: ${encoded.contentType}; name="${encoded.safeName}"`,
+                `Content-ID: <${sanitizeHeader(image.contentId)}>`,
+                `Content-Disposition: inline; filename="${encoded.safeName}"`,
+                'Content-Transfer-Encoding: base64',
+                '',
+                encoded.lines,
+                '',
+            ].join('\r\n');
+        }
+        content += `--${relatedBoundary}--\r\n`;
+    }
+    else {
+        content += [
+            `--${mixedBoundary}`,
+            'Content-Type: text/plain; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            body,
             '',
         ].join('\r\n');
     }
-    content += `--${boundary}--\r\n`;
+    for (const attachment of attachments) {
+        const encoded = await encodeBlobPart(attachment);
+        content += [
+            `--${mixedBoundary}`,
+            `Content-Type: ${encoded.contentType}; name="${encoded.safeName}"`,
+            `Content-Disposition: attachment; filename="${encoded.safeName}"`,
+            'Content-Transfer-Encoding: base64',
+            '',
+            encoded.lines,
+            '',
+        ].join('\r\n');
+    }
+    content += `--${mixedBoundary}--\r\n`;
     const eml = new Blob([content], { type: 'message/rfc822' });
     const url = URL.createObjectURL(eml);
     const link = document.createElement('a');
@@ -1731,18 +1931,31 @@ function PlanningBoard({ projects, lots, artisans, onSaveProject, onAddProject }
             });
             const safeCompany = (0, artisanPlanningPdf_1.sanitizePlanningFileName)(selectedArtisan.company || 'Entreprise') || 'Entreprise';
             const pdfName = `Planning-Maisons-Arlogis-${safeCompany}.pdf`;
+            const signatureResponse = await fetch('./signature-simon-batard.jpg?v=183');
+            if (!signatureResponse.ok)
+                throw new Error('La signature électronique n’a pas pu être chargée.');
+            const signature = await signatureResponse.blob();
+            const signatureContentId = 'signature-simon-batard';
+            const plainBody = `Bonjour,
+
+Veuillez trouver ci-joint le planning prévisionnel de vos prochaines interventions.
+
+Cordialement,`;
+            const htmlBody = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#202124"><p>Bonjour,</p><p>Veuillez trouver ci-joint le planning prévisionnel de vos prochaines interventions.</p><p>Cordialement,</p><p style="margin:18px 0 0"><img src="cid:${signatureContentId}" alt="Signature Simon Batard" width="800" style="display:block;width:100%;max-width:800px;height:auto;border:0"></p></div>`;
             await (0, outlookDraft_1.createOutlookDraft)({
                 to: email,
                 subject: 'Maisons Arlogis - Planning',
-                body: `Bonjour,
-
-Veuillez trouver ci-joint le planning prévisionnel de vos prochaines interventions pour Maisons Arlogis.
-
-Cordialement,`,
+                body: plainBody,
+                htmlBody,
+                inlineImages: [{
+                        blob: signature,
+                        name: 'signature-simon-batard.jpg',
+                        mimeType: 'image/jpeg',
+                        contentId: signatureContentId,
+                    }],
                 attachments: [{ blob: pdf, name: pdfName, mimeType: 'application/pdf' }],
                 fileName: `Maisons-Arlogis-Planning-${safeCompany}.eml`,
             });
-            setArtisanMailMessage('Le brouillon Outlook a été créé avec le planning PDF en pièce jointe.');
         }
         catch (reason) {
             setArtisanMailMessage(reason instanceof Error ? reason.message : 'Création du brouillon impossible.');

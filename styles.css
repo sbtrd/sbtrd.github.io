@@ -5521,7 +5521,7 @@ body { background: #f5f5f3; }
 .view-error-state span { color: var(--muted); font-size: 12px; }
 
 
-/* V1.81 — semaine compacte + envoi du planning artisan */
+/* V1.83 — signature Outlook + hauteur Semaine adaptative */
 .week-view { gap: 12px; }
 .week-view .page-header { gap: 12px; }
 .week-view .page-header h1 { font-size: 27px; }
@@ -5534,11 +5534,12 @@ body { background: #f5f5f3; }
 .week-summary strong { font-size: 20px; }
 .week-summary small { font-size: 8px; }
 .week-summary > button { font-size: 10px; }
-.week-grid { grid-template-columns: repeat(5, minmax(155px, 1fr)); gap: 8px; }
+.week-grid { grid-template-columns: repeat(5, minmax(155px, 1fr)); gap: 8px; align-items: start; }
 .week-day-card > header { min-height: 42px; padding: 8px 10px; gap: 8px; }
 .week-day-card > header span { font-size: 10px; }
 .week-day-card > header strong { width: 24px; height: 24px; font-size: 9px; }
-.week-day-content { min-height: 230px; padding: 7px; gap: 6px; }
+.week-day-card { align-self: start; height: auto; }
+.week-day-content { min-height: 78px; padding: 7px; gap: 6px; }
 .week-item,
 .week-item.intervention.compact { min-height: 0 !important; padding: 7px 8px !important; border-left-width: 3px; border-radius: 8px; gap: 2px !important; box-shadow: 0 3px 10px rgba(32,33,36,.035); }
 .week-item.intervention.compact strong,
