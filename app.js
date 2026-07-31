@@ -1172,9 +1172,9 @@ function OrdersView({ projects, artisans, documents }) {
         const selectedProject = projects.find((item) => item.id === nextProjectId);
         const projectName = safeText(selectedProject?.name) || 'Sans nom';
         const city = safeText(selectedProject?.city);
-        setSubject(selectedProject ? `Commande chantier ${projectName}` : '');
+        setSubject(selectedProject ? `Commandes - ${projectName}${city ? ` [${city}]` : ''}` : '');
         setBody(selectedProject
-            ? `Bonjour,\n\nVeuillez trouver ci-joint les éléments relatifs au chantier ${projectName}${city ? ` à ${city}` : ''}.\n\nMerci de me confirmer la bonne réception de cette commande.\n\nCordialement,`
+            ? `Bonjour,\n\nVeuillez trouver ci-joint les éléments de commande pour le chantier ${projectName}${city ? ` à ${city}` : ''}.\n\nCordialement,`
             : '');
     };
     const toggleDocument = (id) => {
@@ -1204,7 +1204,7 @@ function OrdersView({ projects, artisans, documents }) {
                     mimeType: artisan.conventionMimeType,
                 });
             }
-            const finalSubject = subject.trim() || `Commande chantier ${safeText(project.name) || 'Sans nom'}`;
+            const finalSubject = subject.trim() || `Commandes - ${safeText(project.name) || 'Sans nom'}${safeText(project.city) ? ` [${safeText(project.city)}]` : ''}`;
             const eml = await createEml({
                 to: email,
                 subject: finalSubject,
