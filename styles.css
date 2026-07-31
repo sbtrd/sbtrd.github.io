@@ -5831,3 +5831,53 @@ body { background: #f5f5f3; }
 @media (max-width: 1180px) {
   .dashboard-agenda-grid { grid-template-columns: 1fr; }
 }
+
+
+/* =========================================================
+   V1.87 — durée réelle des rendez-vous
+   ========================================================= */
+.calendar-event-card {
+  min-height: 0;
+  box-sizing: border-box;
+}
+.calendar-event-card.is-compact {
+  padding: 2px 5px;
+  gap: 0;
+  border-left-width: 3px;
+  border-radius: 6px;
+}
+.calendar-event-card.is-compact span { font-size: 6px; line-height: 1; }
+.calendar-event-card.is-compact strong { font-size: 8px; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.calendar-event-card.is-compact small { display: none; }
+.calendar-event-card.is-tiny {
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-left-width: 3px;
+  border-radius: 4px;
+}
+.calendar-event-card.is-tiny span,
+.calendar-event-card.is-tiny small { display: none; }
+.calendar-event-card.is-tiny strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; line-height: 1; }
+
+.dashboard-mini-event,
+.dashboard-day-agenda-wide .dashboard-mini-event {
+  min-height: 0;
+  box-sizing: border-box;
+}
+.dashboard-mini-event.is-compact {
+  padding: 1px 4px;
+  gap: 0;
+  border-radius: 5px;
+}
+.dashboard-mini-event.is-compact strong { font-size: 7px; line-height: 1; }
+.dashboard-mini-event.is-compact small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 6px; line-height: 1; }
+.dashboard-mini-event.is-tiny {
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+}
+.dashboard-mini-event.is-tiny small { display: none; }
+.dashboard-mini-event.is-tiny strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 6px; line-height: 1; }
