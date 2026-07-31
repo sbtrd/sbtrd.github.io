@@ -5779,3 +5779,55 @@ body { background: #f5f5f3; }
   .calendar-view,
   .dashboard-day-agenda { display: none !important; }
 }
+
+
+/* =========================================================
+   V1.86 — tableau de bord réorganisé et événements détaillés
+   ========================================================= */
+.dashboard-focus-grid.dashboard-tasks-only {
+  grid-template-columns: 1fr;
+}
+.dashboard-agenda-grid {
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, .75fr);
+  align-items: start;
+}
+.dashboard-day-agenda-wide .dashboard-mini-calendar {
+  grid-template-columns: 46px minmax(0, 1fr);
+}
+.dashboard-day-agenda-wide .dashboard-mini-event {
+  right: 10px;
+  min-height: 32px;
+  padding: 5px 8px;
+}
+.dashboard-day-agenda-wide .dashboard-mini-event strong { font-size: 9px; }
+.dashboard-day-agenda-wide .dashboard-mini-event small { font-size: 8px; }
+
+.calendar-event-card {
+  min-height: 64px;
+  padding: 7px 9px;
+  gap: 3px;
+}
+.calendar-event-card span {
+  font-size: 8px;
+  line-height: 1.15;
+}
+.calendar-event-card strong {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  font-size: 10px;
+  line-height: 1.2;
+}
+.calendar-event-card small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #555960;
+  font-size: 8px;
+  line-height: 1.25;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-agenda-grid { grid-template-columns: 1fr; }
+}
