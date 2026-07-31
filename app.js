@@ -445,7 +445,7 @@ function App() {
         };
         try {
             await (0, repository_1.saveTask)(task);
-            setTasks((current) => [task, ...current]);
+            setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
             setMessage('Tâche ajoutée.');
         }
         catch (reason) {
@@ -1886,12 +1886,14 @@ function TasksView({ projects, tasks, onCreate, onComplete, onDelete }) {
     const [priority, setPriority] = (0, react_1.useState)('normal');
     const [projectId, setProjectId] = (0, react_1.useState)('');
     const [saving, setSaving] = (0, react_1.useState)(false);
+    const savingRef = (0, react_1.useRef)(false);
     const [completingIds, setCompletingIds] = (0, react_1.useState)([]);
     const activeTasks = (0, react_1.useMemo)(() => tasks.filter((task) => !task.completedAt).sort(sortTasks), [tasks]);
     const completedTasks = (0, react_1.useMemo)(() => tasks.filter((task) => task.completedAt).sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? '')), [tasks]);
     const addTask = async () => {
-        if (!title.trim() || saving)
+        if (!title.trim() || savingRef.current)
             return;
+        savingRef.current = true;
         setSaving(true);
         try {
             await onCreate({
@@ -1908,6 +1910,7 @@ function TasksView({ projects, tasks, onCreate, onComplete, onDelete }) {
             setProjectId('');
         }
         finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };
