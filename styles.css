@@ -5519,3 +5519,44 @@ body { background: #f5f5f3; }
 
 .view-error-state { min-height: 260px; display: grid; place-items: center; align-content: center; gap: 10px; padding: 28px; text-align: center; }
 .view-error-state span { color: var(--muted); font-size: 12px; }
+
+
+/* V1.81 — semaine compacte + envoi du planning artisan */
+.week-view { gap: 12px; }
+.week-view .page-header { gap: 12px; }
+.week-view .page-header h1 { font-size: 27px; }
+.week-header-actions { gap: 6px; }
+.week-header-actions .primary-button,
+.week-header-actions .secondary-button { padding: 8px 11px; font-size: 10px; }
+.week-summary > div,
+.week-summary > button { min-height: 52px; padding: 8px 12px; gap: 1px; }
+.week-summary span { font-size: 8px; }
+.week-summary strong { font-size: 20px; }
+.week-summary small { font-size: 8px; }
+.week-summary > button { font-size: 10px; }
+.week-grid { grid-template-columns: repeat(5, minmax(155px, 1fr)); gap: 8px; }
+.week-day-card > header { min-height: 42px; padding: 8px 10px; gap: 8px; }
+.week-day-card > header span { font-size: 10px; }
+.week-day-card > header strong { width: 24px; height: 24px; font-size: 9px; }
+.week-day-content { min-height: 230px; padding: 7px; gap: 6px; }
+.week-item,
+.week-item.intervention.compact { min-height: 0 !important; padding: 7px 8px !important; border-left-width: 3px; border-radius: 8px; gap: 2px !important; box-shadow: 0 3px 10px rgba(32,33,36,.035); }
+.week-item.intervention.compact strong,
+.week-item.task strong { font-size: 10px !important; line-height: 1.15 !important; }
+.week-item.intervention.compact small,
+.week-item.task small { font-size: 8px !important; line-height: 1.15 !important; }
+.week-item.task { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 6px; }
+.week-item.task .task-check { width: 23px; height: 23px; border-width: 1.5px; }
+.week-item.task em { margin: 0; padding: 2px 5px; font-size: 7px; }
+.week-empty { padding: 18px 5px; font-size: 9px; }
+.artisan-planning-mail-message { margin: 0; padding: 10px 18px 12px; border-top: 1px solid var(--border); color: #4b5563; background: #fafaf9; font-size: 10px; font-weight: 700; }
+@media (max-width: 1100px) {
+  .week-grid { grid-template-columns: repeat(3, minmax(165px, 1fr)); }
+}
+@media (max-width: 760px) {
+  .week-grid { grid-template-columns: 1fr; }
+  .week-day-content { min-height: 0; }
+  .week-summary > div,
+  .week-summary > button { min-height: 48px; }
+}
+

@@ -1,4 +1,4 @@
-/* Conduct'Home v1.74 — bundle applicatif propre, sans patch injecté. */
+/* Conduct'Home v1.81 — bundle applicatif propre, sans patch injecté. */
 (function (global) {
 'use strict';
 const modules = {
@@ -1238,6 +1238,250 @@ function OrdersView({ projects, artisans, documents }) {
 }
 
 },
+"src/lib/artisanPlanningPdf": function(module, exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sanitizePlanningFileName = void 0;
+exports.createArtisanPlanningPdf = createArtisanPlanningPdf;
+const PAGE_WIDTH = 841.89;
+const PAGE_HEIGHT = 595.28;
+const MARGIN = 34;
+const HEADER_HEIGHT = 94;
+const FOOTER_HEIGHT = 30;
+const TABLE_HEADER_HEIGHT = 28;
+const ROW_HEIGHT = 24;
+const cp1252Extra = {
+    '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87,
+    'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a, '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e, '‘': 0x91,
+    '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97, '˜': 0x98,
+    '™': 0x99, 'š': 0x9a, '›': 0x9b, 'œ': 0x9c, 'ž': 0x9e, 'Ÿ': 0x9f,
+};
+const toCp1252Byte = (character) => {
+    const extra = cp1252Extra[character];
+    if (extra !== undefined)
+        return extra;
+    const code = character.codePointAt(0) ?? 63;
+    if (code >= 32 && code <= 255)
+        return code;
+    const simplified = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const simplifiedCode = simplified.codePointAt(0);
+    return simplifiedCode && simplifiedCode >= 32 && simplifiedCode <= 126 ? simplifiedCode : 63;
+};
+const pdfHex = (value) => `<${Array.from(value).map((character) => toCp1252Byte(character).toString(16).padStart(2, '0')).join('')}>`;
+const number = (value) => Number(value.toFixed(2)).toString();
+const estimateTextWidth = (value, fontSize, bold = false) => {
+    const factor = bold ? 1.04 : 1;
+    return Array.from(value).reduce((width, character) => {
+        if (character === ' ')
+            return width + fontSize * 0.28;
+        if ("ilI.,'!:;|".includes(character))
+            return width + fontSize * 0.25;
+        if ('MW@%&'.includes(character))
+            return width + fontSize * 0.82;
+        if (/[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ]/.test(character))
+            return width + fontSize * 0.62 * factor;
+        if (/[0-9]/.test(character))
+            return width + fontSize * 0.56 * factor;
+        return width + fontSize * 0.5 * factor;
+    }, 0);
+};
+const truncateText = (value, maxWidth, fontSize, bold = false) => {
+    const cleaned = value.replace(/\s+/g, ' ').trim() || '—';
+    if (estimateTextWidth(cleaned, fontSize, bold) <= maxWidth)
+        return cleaned;
+    let output = cleaned;
+    while (output.length > 1 && estimateTextWidth(`${output}…`, fontSize, bold) > maxWidth) {
+        output = output.slice(0, -1);
+    }
+    return `${output.trimEnd()}…`;
+};
+const formatDate = (value) => {
+    const parsed = new Date(`${value}T12:00:00`);
+    return Number.isNaN(parsed.getTime())
+        ? value
+        : new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed);
+};
+const statusLabels = {
+    todo: 'À planifier',
+    scheduled: 'Planifiée',
+    in_progress: 'En cours',
+    done: 'Terminée',
+    blocked: 'Bloquée',
+};
+function createArtisanPlanningPdf({ artisan, rows }) {
+    const rowsPerPage = Math.max(1, Math.floor((PAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - TABLE_HEADER_HEIGHT - MARGIN) / ROW_HEIGHT));
+    const chunks = rows.length
+        ? Array.from({ length: Math.ceil(rows.length / rowsPerPage) }, (_, index) => rows.slice(index * rowsPerPage, (index + 1) * rowsPerPage))
+        : [[]];
+    const pages = chunks.map(() => ({ commands: [] }));
+    const columns = [
+        { label: 'DATE', width: 72 },
+        { label: 'CHANTIER', width: 126 },
+        { label: 'VILLE', width: 102 },
+        { label: 'INTERVENTION', width: 165 },
+        { label: 'STATUT', width: 82 },
+        { label: 'NOTE', width: PAGE_WIDTH - MARGIN * 2 - 72 - 126 - 102 - 165 - 82 },
+    ];
+    const addCommand = (page, command) => page.commands.push(command);
+    const fillRect = (page, x, yTop, width, height, rgb) => {
+        addCommand(page, `${rgb.map(number).join(' ')} rg ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re f`);
+    };
+    const strokeRect = (page, x, yTop, width, height, rgb, lineWidth = .6) => {
+        addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re S`);
+    };
+    const drawText = (page, value, x, yTop, fontSize, bold = false, rgb = [.15, .16, .18]) => {
+        addCommand(page, `BT /${bold ? 'F2' : 'F1'} ${number(fontSize)} Tf ${rgb.map(number).join(' ')} rg 1 0 0 1 ${number(x)} ${number(PAGE_HEIGHT - yTop - fontSize)} Tm ${pdfHex(value)} Tj ET`);
+    };
+    const drawRightText = (page, value, right, yTop, fontSize, bold = false, rgb = [.15, .16, .18]) => {
+        drawText(page, value, right - estimateTextWidth(value, fontSize, bold), yTop, fontSize, bold, rgb);
+    };
+    pages.forEach((page, pageIndex) => {
+        fillRect(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, [1, 1, 1]);
+        fillRect(page, 0, 0, PAGE_WIDTH, 8, [.77, .04, .09]);
+        drawText(page, 'MAISONS ARLOGIS', MARGIN, 27, 17, true, [.77, .04, .09]);
+        drawText(page, 'PLANNING PRÉVISIONNEL ENTREPRISE', MARGIN, 52, 9, true, [.36, .38, .42]);
+        drawText(page, artisan.company || 'Entreprise', MARGIN, 67, 15, true);
+        const editionDate = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
+        drawRightText(page, `Édité le ${editionDate}`, PAGE_WIDTH - MARGIN, 34, 8.5, false, [.42, .44, .48]);
+        drawRightText(page, `${rows.length} intervention${rows.length > 1 ? 's' : ''} à venir`, PAGE_WIDTH - MARGIN, 52, 10, true);
+        let x = MARGIN;
+        const tableTop = HEADER_HEIGHT;
+        columns.forEach((column) => {
+            fillRect(page, x, tableTop, column.width, TABLE_HEADER_HEIGHT, [.16, .17, .19]);
+            drawText(page, column.label, x + 7, tableTop + 9, 7.7, true, [1, 1, 1]);
+            x += column.width;
+        });
+        const pageRows = chunks[pageIndex];
+        if (!pageRows.length) {
+            strokeRect(page, MARGIN, tableTop + TABLE_HEADER_HEIGHT, PAGE_WIDTH - MARGIN * 2, ROW_HEIGHT * 2, [.87, .88, .9]);
+            drawText(page, 'Aucune intervention future programmée avec cette entreprise.', MARGIN + 12, tableTop + TABLE_HEADER_HEIGHT + 19, 10, false, [.42, .44, .48]);
+        }
+        else {
+            pageRows.forEach((row, rowIndex) => {
+                const y = tableTop + TABLE_HEADER_HEIGHT + rowIndex * ROW_HEIGHT;
+                if (rowIndex % 2 === 1)
+                    fillRect(page, MARGIN, y, PAGE_WIDTH - MARGIN * 2, ROW_HEIGHT, [.975, .975, .97]);
+                strokeRect(page, MARGIN, y, PAGE_WIDTH - MARGIN * 2, ROW_HEIGHT, [.88, .89, .9], .45);
+                const status = row.overdue ? 'En retard' : statusLabels[row.stage.status];
+                const values = [
+                    formatDate(row.plannedDate),
+                    row.project.name || 'Sans nom',
+                    row.project.city || row.project.address || '—',
+                    row.definition.label || '—',
+                    status,
+                    row.stage.note || '—',
+                ];
+                let cellX = MARGIN;
+                values.forEach((value, columnIndex) => {
+                    const column = columns[columnIndex];
+                    const bold = columnIndex === 0 || columnIndex === 1;
+                    const color = columnIndex === 4 && row.overdue ? [.72, .06, .1] : [.17, .18, .21];
+                    drawText(page, truncateText(value, column.width - 14, 8.2, bold), cellX + 7, y + 7.5, 8.2, bold, color);
+                    cellX += column.width;
+                });
+            });
+        }
+        const footerY = PAGE_HEIGHT - FOOTER_HEIGHT;
+        fillRect(page, MARGIN, footerY, PAGE_WIDTH - MARGIN * 2, .7, [.86, .87, .89]);
+        drawText(page, "Planning indicatif généré depuis Conduct'Home — À confirmer avec le conducteur de travaux", MARGIN, footerY + 10, 7.3, false, [.48, .5, .54]);
+        drawRightText(page, `Page ${pageIndex + 1}/${pages.length}`, PAGE_WIDTH - MARGIN, footerY + 10, 7.3, true, [.48, .5, .54]);
+    });
+    const objectCount = 4 + pages.length * 2;
+    const objects = new Array(objectCount + 1).fill('');
+    objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    const pageObjectNumbers = pages.map((_, index) => 5 + index * 2);
+    objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((value) => `${value} 0 R`).join(' ')}] /Count ${pages.length} >>`;
+    objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    pages.forEach((page, index) => {
+        const pageObjectNumber = 5 + index * 2;
+        const contentObjectNumber = pageObjectNumber + 1;
+        const stream = page.commands.join('\n');
+        const streamLength = new TextEncoder().encode(stream).length;
+        objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${number(PAGE_WIDTH)} ${number(PAGE_HEIGHT)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
+        objects[contentObjectNumber] = `<< /Length ${streamLength} >>\nstream\n${stream}\nendstream`;
+    });
+    const encoder = new TextEncoder();
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    for (let index = 1; index < objects.length; index++) {
+        offsets[index] = encoder.encode(pdf).length;
+        pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+    }
+    const xrefOffset = encoder.encode(pdf).length;
+    pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+    for (let index = 1; index < objects.length; index++) {
+        pdf += `${offsets[index].toString().padStart(10, '0')} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    return new Blob([encoder.encode(pdf)], { type: 'application/pdf' });
+}
+const sanitizePlanningFileName = (value) => value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+exports.sanitizePlanningFileName = sanitizePlanningFileName;
+
+
+},
+"src/lib/outlookDraft": function(module, exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createOutlookDraft = createOutlookDraft;
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error ?? new Error('Lecture du fichier impossible.'));
+    reader.readAsDataURL(blob);
+});
+const sanitizeHeader = (value) => value.replace(/[\r\n]+/g, ' ').trim();
+async function createOutlookDraft({ to, subject, body, attachments = [], fileName }) {
+    const boundary = `----ConductHome-${Date.now()}`;
+    let content = [
+        'X-Unsent: 1',
+        `To: ${sanitizeHeader(to)}`,
+        `Subject: ${sanitizeHeader(subject)}`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: 8bit',
+        '',
+        body,
+        '',
+    ].join('\r\n');
+    for (const attachment of attachments) {
+        const encoded = await blobToBase64(attachment.blob);
+        const lines = encoded.match(/.{1,76}/g)?.join('\r\n') ?? '';
+        const safeName = attachment.name.replaceAll('"', '');
+        content += [
+            `--${boundary}`,
+            `Content-Type: ${attachment.mimeType || attachment.blob.type || 'application/octet-stream'}; name="${safeName}"`,
+            `Content-Disposition: attachment; filename="${safeName}"`,
+            'Content-Transfer-Encoding: base64',
+            '',
+            lines,
+            '',
+        ].join('\r\n');
+    }
+    content += `--${boundary}--\r\n`;
+    const eml = new Blob([content], { type: 'message/rfc822' });
+    const url = URL.createObjectURL(eml);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || `${subject.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Brouillon Outlook'}.eml`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+
+},
 "src/components/PlanningBoard": function(module, exports, require) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -1247,6 +1491,8 @@ const react_1 = require("react");
 const stages_1 = require("../data/stages");
 const artisans_1 = require("../lib/artisans");
 const planning_1 = require("../lib/planning");
+const artisanPlanningPdf_1 = require("../lib/artisanPlanningPdf");
+const outlookDraft_1 = require("../lib/outlookDraft");
 const Modal_1 = require("./Modal");
 const statusLabels = {
     todo: 'À planifier',
@@ -1293,6 +1539,8 @@ function PlanningBoard({ projects, lots, artisans, onSaveProject, onAddProject }
     const [saving, setSaving] = (0, react_1.useState)(false);
     const [density, setDensity] = (0, react_1.useState)('compact');
     const [artisanPrintId, setArtisanPrintId] = (0, react_1.useState)('');
+    const [preparingArtisanMail, setPreparingArtisanMail] = (0, react_1.useState)(false);
+    const [artisanMailMessage, setArtisanMailMessage] = (0, react_1.useState)();
     const artisanCompanies = (0, react_1.useMemo)(() => Array.from(new Set(artisans.map((artisan) => artisan.company.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'fr')), [artisans]);
     const resolveArtisan = (stage) => {
         const byId = stage.artisanId ? artisans.find((artisan) => artisan.id === stage.artisanId) : undefined;
@@ -1466,6 +1714,43 @@ function PlanningBoard({ projects, lots, artisans, onSaveProject, onAddProject }
             delete document.body.dataset.printMode;
         }, 600);
     };
+    const emailArtisanPlanning = async () => {
+        if (!selectedArtisan || preparingArtisanMail)
+            return;
+        const email = (selectedArtisan.email || selectedArtisan.orderEmail || '').trim();
+        if (!email) {
+            setArtisanMailMessage("Ajoute d'abord une adresse e-mail dans la fiche de cet artisan.");
+            return;
+        }
+        setPreparingArtisanMail(true);
+        setArtisanMailMessage(undefined);
+        try {
+            const pdf = (0, artisanPlanningPdf_1.createArtisanPlanningPdf)({
+                artisan: selectedArtisan,
+                rows: artisanPlanningRows.filter(Boolean),
+            });
+            const safeCompany = (0, artisanPlanningPdf_1.sanitizePlanningFileName)(selectedArtisan.company || 'Entreprise') || 'Entreprise';
+            const pdfName = `Planning-Maisons-Arlogis-${safeCompany}.pdf`;
+            await (0, outlookDraft_1.createOutlookDraft)({
+                to: email,
+                subject: 'Maisons Arlogis - Planning',
+                body: `Bonjour,
+
+Veuillez trouver ci-joint le planning prévisionnel de vos prochaines interventions pour Maisons Arlogis.
+
+Cordialement,`,
+                attachments: [{ blob: pdf, name: pdfName, mimeType: 'application/pdf' }],
+                fileName: `Maisons-Arlogis-Planning-${safeCompany}.eml`,
+            });
+            setArtisanMailMessage('Le brouillon Outlook a été créé avec le planning PDF en pièce jointe.');
+        }
+        catch (reason) {
+            setArtisanMailMessage(reason instanceof Error ? reason.message : 'Création du brouillon impossible.');
+        }
+        finally {
+            setPreparingArtisanMail(false);
+        }
+    };
     const groupedStages = groupOrder.map((group) => ({
         group,
         stages: stages_1.STAGES.filter((stage) => stage.group === group),
@@ -1479,7 +1764,7 @@ function PlanningBoard({ projects, lots, artisans, onSaveProject, onAddProject }
     return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack planning-view planning-v2", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header planning-page-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Planning par \u00E9tapes" }), (0, jsx_runtime_1.jsx)("h1", { children: "Planning g\u00E9n\u00E9ral" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-header-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button print-planning-button", onClick: printPlanning, children: "\u2399 Imprimer / PDF" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: onAddProject, children: "+ Nouveau chantier" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "planning-toolbar panel planning-toolbar-v2", children: [(0, jsx_runtime_1.jsxs)("label", { className: "search-field planning-search", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2315" }), (0, jsx_runtime_1.jsx)("input", { value: search, onChange: (event) => setSearch(event.target.value), placeholder: "Rechercher un chantier, un client ou une ville" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "select-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise" }), (0, jsx_runtime_1.jsxs)("select", { value: artisanFilter, onChange: (event) => setArtisanFilter(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "all", children: "Toutes les entreprises" }), artisanCompanies.map((name) => (0, jsx_runtime_1.jsx)("option", { value: name, children: name }, name))] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "select-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u00C9tat du planning" }), (0, jsx_runtime_1.jsxs)("select", { value: planningFilter, onChange: (event) => setPlanningFilter(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "all", children: "Tous les chantiers" }), (0, jsx_runtime_1.jsx)("option", { value: "unplanned", children: "Dates manquantes" }), (0, jsx_runtime_1.jsx)("option", { value: "late", children: "\u00C9tapes en retard" })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "density-control", "aria-label": "Densit\u00E9 du planning", children: [(0, jsx_runtime_1.jsx)("button", { className: density === 'comfortable' ? 'active' : '', onClick: () => setDensity('comfortable'), children: "Confort" }), (0, jsx_runtime_1.jsx)("button", { className: density === 'compact' ? 'active' : '', onClick: () => setDensity('compact'), children: "Fin" }), (0, jsx_runtime_1.jsx)("button", { className: density === 'dense' ? 'active' : '', onClick: () => setDensity('dense'), children: "Tr\u00E8s fin" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "planning-summary-strip", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: filtered.length }), (0, jsx_runtime_1.jsx)("span", { children: "chantiers affich\u00E9s" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: filtered.reduce((total, project) => total + project.stages.filter((stage) => !stage.plannedDate).length, 0) }), (0, jsx_runtime_1.jsx)("span", { children: "dates \u00E0 renseigner" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: filtered.reduce((total, project) => total + project.stages.filter((stage) => stage.status !== 'done' && isPast(stage.plannedDate)).length, 0) }), (0, jsx_runtime_1.jsx)("span", { children: "\u00E9tapes en retard" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-legend-v2", children: [(0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("i", { className: "status-dot-v2 done" }), " Termin\u00E9"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("i", { className: "status-dot-v2 in-progress" }), " En cours"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("i", { className: "status-dot-v2 late" }), " En retard"] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "artisan-planning-panel panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-head", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Planning artisan" }), (0, jsx_runtime_1.jsx)("h2", { children: "Sortir un planning par entreprise" }), (0, jsx_runtime_1.jsx)("p", { children: "S\u00E9lectionne une entreprise pour g\u00E9n\u00E9rer la liste de ses prochaines interventions programm\u00E9es." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-actions", children: [(0, jsx_runtime_1.jsxs)("label", { className: "select-field artisan-planning-select", children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise \u00E0 envoyer" }), (0, jsx_runtime_1.jsxs)("select", { value: artisanPrintId, onChange: (event) => setArtisanPrintId(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choisir une entreprise" }), artisans
                                                         .slice()
                                                         .sort((a, b) => a.company.localeCompare(b.company, 'fr'))
-                                                        .map((artisan) => (0, jsx_runtime_1.jsx)("option", { value: artisan.id, children: artisan.company }, artisan.id))] })] }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: printArtisanPlanning, disabled: !selectedArtisan, children: "\u2399 PDF artisan" })] })] }), selectedArtisan ? ((0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-preview", children: [(0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-identity", children: [(0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.company }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedArtisan.contactName || 'Contact non renseigné', " \u00B7 ", selectedArtisan.phone || 'Téléphone non renseigné'] }), (0, jsx_runtime_1.jsxs)("small", { children: ["\u00C9tapes d\u00E9clar\u00E9es : ", selectedArtisanStageLabels.length ? selectedArtisanStageLabels.join(', ') : 'aucune étape cochée'] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-count", children: [(0, jsx_runtime_1.jsx)("strong", { children: artisanPlanningRows.length }), (0, jsx_runtime_1.jsx)("span", { children: "interventions \u00E0 venir" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-mini-list", children: [artisanPlanningRows.slice(0, 6).map((row) => row && ((0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("b", { children: (0, planning_1.formatDate)(row.plannedDate) }), (0, jsx_runtime_1.jsxs)("span", { children: [row.project.name, " \u00B7 ", row.definition.label] }), (0, jsx_runtime_1.jsx)("small", { children: row.project.city || row.project.address || 'Adresse non renseignée' })] }, row.id))), artisanPlanningRows.length === 0 && (0, jsx_runtime_1.jsx)("p", { children: "Aucune intervention future programm\u00E9e avec cette entreprise." })] })] })) : ((0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-empty", children: "Choisis une entreprise pour pr\u00E9visualiser son planning avant impression." }))] }), (0, jsx_runtime_1.jsx)("section", { className: `planning-shell panel planning-shell-v2 ${density}`, children: (0, jsx_runtime_1.jsxs)("div", { className: "planning-scroll planning-scroll-v2", children: [(0, jsx_runtime_1.jsxs)("table", { className: "planning-table planning-table-v2", children: [(0, jsx_runtime_1.jsxs)("thead", { children: [(0, jsx_runtime_1.jsxs)("tr", { className: "planning-groups-row-v2", children: [(0, jsx_runtime_1.jsxs)("th", { className: "project-sticky-head", rowSpan: 2, children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier" }), (0, jsx_runtime_1.jsx)("small", { children: "Avancement g\u00E9n\u00E9ral" })] }), groupedStages.map(({ group, stages }) => ((0, jsx_runtime_1.jsx)("th", { className: `group-heading-v2 group-${group.replace(/[^a-zA-Z]/g, '').toLowerCase()}`, colSpan: stages.length, children: group }, group)))] }), (0, jsx_runtime_1.jsx)("tr", { className: "planning-stage-row-v2", children: stages_1.STAGES.map((stage, index) => ((0, jsx_runtime_1.jsx)("th", { className: "stage-heading-v2", title: stage.label, children: (0, jsx_runtime_1.jsx)("div", { className: "stage-heading-card", children: (0, jsx_runtime_1.jsx)("strong", { children: stage.label }) }) }, stage.id))) })] }), (0, jsx_runtime_1.jsx)("tbody", { children: filtered.map((project) => {
+                                                        .map((artisan) => (0, jsx_runtime_1.jsx)("option", { value: artisan.id, children: artisan.company }, artisan.id))] })] }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: printArtisanPlanning, disabled: !selectedArtisan, children: "\u2399 PDF artisan" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: () => void emailArtisanPlanning(), disabled: !selectedArtisan || preparingArtisanMail, children: preparingArtisanMail ? 'Préparation…' : '✉ Envoyer le planning' })] })] }), artisanMailMessage && (0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-mail-message", children: artisanMailMessage }), selectedArtisan ? ((0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-preview", children: [(0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-identity", children: [(0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.company }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedArtisan.contactName || 'Contact non renseigné', " \u00B7 ", selectedArtisan.phone || 'Téléphone non renseigné'] }), (0, jsx_runtime_1.jsxs)("small", { children: ["\u00C9tapes d\u00E9clar\u00E9es : ", selectedArtisanStageLabels.length ? selectedArtisanStageLabels.join(', ') : 'aucune étape cochée'] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-count", children: [(0, jsx_runtime_1.jsx)("strong", { children: artisanPlanningRows.length }), (0, jsx_runtime_1.jsx)("span", { children: "interventions \u00E0 venir" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-mini-list", children: [artisanPlanningRows.slice(0, 6).map((row) => row && ((0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("b", { children: (0, planning_1.formatDate)(row.plannedDate) }), (0, jsx_runtime_1.jsxs)("span", { children: [row.project.name, " \u00B7 ", row.definition.label] }), (0, jsx_runtime_1.jsx)("small", { children: row.project.city || row.project.address || 'Adresse non renseignée' })] }, row.id))), artisanPlanningRows.length === 0 && (0, jsx_runtime_1.jsx)("p", { children: "Aucune intervention future programm\u00E9e avec cette entreprise." })] })] })) : ((0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-empty", children: "Choisis une entreprise pour pr\u00E9visualiser son planning avant impression." }))] }), (0, jsx_runtime_1.jsx)("section", { className: `planning-shell panel planning-shell-v2 ${density}`, children: (0, jsx_runtime_1.jsxs)("div", { className: "planning-scroll planning-scroll-v2", children: [(0, jsx_runtime_1.jsxs)("table", { className: "planning-table planning-table-v2", children: [(0, jsx_runtime_1.jsxs)("thead", { children: [(0, jsx_runtime_1.jsxs)("tr", { className: "planning-groups-row-v2", children: [(0, jsx_runtime_1.jsxs)("th", { className: "project-sticky-head", rowSpan: 2, children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier" }), (0, jsx_runtime_1.jsx)("small", { children: "Avancement g\u00E9n\u00E9ral" })] }), groupedStages.map(({ group, stages }) => ((0, jsx_runtime_1.jsx)("th", { className: `group-heading-v2 group-${group.replace(/[^a-zA-Z]/g, '').toLowerCase()}`, colSpan: stages.length, children: group }, group)))] }), (0, jsx_runtime_1.jsx)("tr", { className: "planning-stage-row-v2", children: stages_1.STAGES.map((stage, index) => ((0, jsx_runtime_1.jsx)("th", { className: "stage-heading-v2", title: stage.label, children: (0, jsx_runtime_1.jsx)("div", { className: "stage-heading-card", children: (0, jsx_runtime_1.jsx)("strong", { children: stage.label }) }) }, stage.id))) })] }), (0, jsx_runtime_1.jsx)("tbody", { children: filtered.map((project) => {
                                         const progress = (0, planning_1.getProgress)(project);
                                         const currentStage = (0, planning_1.getCurrentStage)(project);
                                         return ((0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("td", { className: "project-sticky-cell", children: (0, jsx_runtime_1.jsxs)("div", { className: "project-planning-card", children: [(0, jsx_runtime_1.jsxs)("div", { className: "project-planning-title", children: [(0, jsx_runtime_1.jsx)("strong", { children: project.name }), (0, jsx_runtime_1.jsxs)("span", { children: [progress, "%"] })] }), (0, jsx_runtime_1.jsxs)("p", { children: [project.city, " \u00B7 ", project.clientName] }), (0, jsx_runtime_1.jsx)("div", { className: "project-progress-v2", children: (0, jsx_runtime_1.jsx)("i", { style: { width: `${progress}%` } }) }), (0, jsx_runtime_1.jsxs)("small", { children: ["En cours : ", (0, planning_1.getStageLabel)(currentStage?.stageId)] })] }) }), stages_1.STAGES.map((definition) => {
