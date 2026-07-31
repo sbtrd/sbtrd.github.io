@@ -1,4 +1,4 @@
-/* Conduct'Home v1.82 — PDF artisan identique pour Outlook. */
+/* Conduct'Home v1.85 — semaine chantier et calendrier rendez-vous. */
 (function (global) {
 'use strict';
 const modules = {
@@ -11,6 +11,7 @@ const Sidebar_1 = require("./components/Sidebar");
 const Dashboard_1 = require("./components/Dashboard");
 const PlanningBoard_1 = require("./components/PlanningBoard");
 const WeekView_1 = require("./components/WeekView");
+const CalendarView_1 = require("./components/CalendarView");
 const ProjectsView_1 = require("./components/ProjectsView");
 const DocumentsView_1 = require("./components/DocumentsView");
 const OrdersView_1 = require("./components/OrdersView");
@@ -48,6 +49,7 @@ function App() {
     const [artisans, setArtisans] = (0, react_1.useState)([]);
     const [documents, setDocuments] = (0, react_1.useState)([]);
     const [tasks, setTasks] = (0, react_1.useState)([]);
+    const [calendarEvents, setCalendarEvents] = (0, react_1.useState)([]);
     const [selectedProjectId, setSelectedProjectId] = (0, react_1.useState)();
     const [newProjectOpen, setNewProjectOpen] = (0, react_1.useState)(false);
     const [newProject, setNewProject] = (0, react_1.useState)(emptyProject);
@@ -102,6 +104,7 @@ function App() {
             setArtisans(data.artisans);
             setDocuments(data.documents);
             setTasks(data.tasks);
+            setCalendarEvents(data.calendarEvents);
             setDismissedNotificationIds(dismissedIds);
             setSelectedProjectId(data.projects.find((project) => !project.archivedAt)?.id ?? data.projects[0]?.id);
         })
@@ -148,6 +151,7 @@ function App() {
             setArtisans(data.artisans);
             setDocuments(data.documents);
             setTasks(data.tasks);
+            setCalendarEvents(data.calendarEvents);
             setSelectedProjectId(data.projects.find((project) => !project.archivedAt)?.id ?? data.projects[0]?.id);
         };
         window.addEventListener('conduct-home-remote-sync', handleRemoteSync);
@@ -480,6 +484,30 @@ function App() {
             throw reason;
         }
     };
+    const handleSaveCalendarEvent = async (event) => {
+        try {
+            await (0, repository_1.saveCalendarEvent)(event);
+            setCalendarEvents((current) => current.some((item) => item.id === event.id)
+                ? current.map((item) => item.id === event.id ? event : item)
+                : [...current, event]);
+            setMessage('Rendez-vous enregistré dans le calendrier.');
+        }
+        catch (reason) {
+            setError(reason instanceof Error ? reason.message : 'Enregistrement du rendez-vous impossible.');
+            throw reason;
+        }
+    };
+    const handleDeleteCalendarEvent = async (event) => {
+        try {
+            await (0, repository_1.removeCalendarEvent)(event.id);
+            setCalendarEvents((current) => current.filter((item) => item.id !== event.id));
+            setMessage('Rendez-vous supprimé du calendrier.');
+        }
+        catch (reason) {
+            setError(reason instanceof Error ? reason.message : 'Suppression du rendez-vous impossible.');
+            throw reason;
+        }
+    };
     const openProject = (projectId) => {
         setSelectedProjectId(projectId);
         setView('projects');
@@ -492,6 +520,7 @@ function App() {
         setArtisans([]);
         setDocuments([]);
         setTasks([]);
+        setCalendarEvents([]);
         setDismissedNotificationIds([]);
     };
     const handleLogout = async () => {
@@ -502,6 +531,7 @@ function App() {
         setArtisans([]);
         setDocuments([]);
         setTasks([]);
+        setCalendarEvents([]);
         setDismissedNotificationIds([]);
         setSelectedProjectId(undefined);
         setView('dashboard');
@@ -515,7 +545,7 @@ function App() {
     if (loading) {
         return (0, jsx_runtime_1.jsxs)("div", { className: "app-loading", children: [(0, jsx_runtime_1.jsx)("div", { className: "loader" }), (0, jsx_runtime_1.jsx)("strong", { children: "Chargement de l\u2019espace ARLOGIS\u2026" })] });
     }
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "app-shell", children: [(0, jsx_runtime_1.jsx)(Sidebar_1.Sidebar, { active: view, onChange: setView, notificationCount: notifications.length, taskCount: tasks.filter((task) => !task.completedAt).length }), (0, jsx_runtime_1.jsxs)("main", { className: "main-shell", children: [(0, jsx_runtime_1.jsxs)("div", { className: "topbar", children: [(0, jsx_runtime_1.jsx)("div", {}), (0, jsx_runtime_1.jsxs)("div", { className: "topbar-actions", children: [(0, jsx_runtime_1.jsxs)("button", { className: "notification-button", onClick: () => setView('notifications'), "aria-label": "Voir les alertes", children: ["!", (0, jsx_runtime_1.jsx)("span", { children: notifications.length })] }), (0, jsx_runtime_1.jsx)("button", { className: "logout-button", onClick: handleLogout, children: "D\u00E9connexion" }), (0, jsx_runtime_1.jsxs)("div", { className: "user-chip", children: [(0, jsx_runtime_1.jsx)("div", { children: (currentUser.name || currentUser.email).slice(0, 2).toUpperCase() }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: currentUser.name || 'Conducteur de travaux' }), (0, jsx_runtime_1.jsx)("small", { children: currentUser.email })] })] })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "page-content", children: (0, jsx_runtime_1.jsxs)(ViewErrorBoundary_1.ViewErrorBoundary, { children: [view === 'dashboard' && (0, jsx_runtime_1.jsx)(Dashboard_1.Dashboard, { projects: activeProjects, notifications: notifications, tasks: tasks, onOpenPlanning: () => setView('planning'), onOpenWeek: () => setView('week'), onOpenProject: openProject, onOpenTasks: () => setView('tasks'), onCompleteTask: handleCompleteTask }), view === 'week' && (0, jsx_runtime_1.jsx)(WeekView_1.WeekView, { projects: activeProjects, artisans: artisans, tasks: tasks, onCompleteTask: handleCompleteTask, onOpenProject: openProject, onOpenPlanning: () => setView('planning') }), view === 'tasks' && (0, jsx_runtime_1.jsx)(TasksView_1.TasksView, { projects: activeProjects, tasks: tasks, onCreate: handleCreateTask, onComplete: handleCompleteTask, onDelete: handleDeleteTask }), view === 'planning' && (0, jsx_runtime_1.jsx)(PlanningBoard_1.PlanningBoard, { projects: activeProjects, lots: lots, artisans: artisans, onSaveProject: handleSaveProject, onAddProject: () => setNewProjectOpen(true) }), view === 'projects' && ((0, jsx_runtime_1.jsx)(ProjectsView_1.ProjectsView, { projects: projects, documents: documents, selectedProjectId: selectedProjectId, onSelect: setSelectedProjectId, onAddProject: () => setNewProjectOpen(true), onSaveProject: handleSaveProject, onArchiveProject: handleArchiveProject, onRestoreProject: handleRestoreProject, onOpenDocument: handleOpenDocument, currentUserEmail: currentUser.email })), view === 'documents' && (0, jsx_runtime_1.jsx)(DocumentsView_1.DocumentsView, { projects: activeProjects, documents: documents, onUpload: handleUpload, onOpenDocument: handleOpenDocument, onMoveDocument: handleMoveDocument, onDeleteDocument: handleDeleteDocument }), view === 'orders' && (0, jsx_runtime_1.jsx)(OrdersView_1.OrdersView, { projects: activeProjects, artisans: artisans, documents: documents }), view === 'artisans' && ((0, jsx_runtime_1.jsx)(ArtisansView_1.ArtisansView, { lots: lots, artisans: artisans, onSaveLot: handleSaveLot, onDeleteLot: handleDeleteLot, onSaveArtisan: handleSaveArtisan, onDeleteArtisan: handleDeleteArtisan, onUploadConvention: handleUploadConvention })), view === 'notifications' && (0, jsx_runtime_1.jsx)(NotificationsView_1.NotificationsView, { notifications: notifications, onDismiss: handleDismissNotification })] }, view) })] }), sharedProjectPayload && ((0, jsx_runtime_1.jsxs)(Modal_1.Modal, { title: "Chantier partag\u00E9", onClose: () => { setSharedProjectPayload(undefined); (0, projectSharing_1.clearSharedProjectHash)(); }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "shared-project-import", children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Invitation re\u00E7ue" }), (0, jsx_runtime_1.jsx)("h3", { children: sharedProjectPayload.project.name }), (0, jsx_runtime_1.jsxs)("p", { children: [sharedProjectPayload.project.clientName, " \u00B7 ", sharedProjectPayload.project.city] }), sharedProjectPayload.sharedBy && (0, jsx_runtime_1.jsxs)("small", { children: ["Partag\u00E9 par ", sharedProjectPayload.sharedBy] }), (0, jsx_runtime_1.jsxs)("div", { className: "shared-project-summary", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes" }), (0, jsx_runtime_1.jsx)("strong", { children: sharedProjectPayload.project.stages.length })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Avancement" }), (0, jsx_runtime_1.jsxs)("strong", { children: [(0, planning_1.getProgress)(sharedProjectPayload.project), "%"] })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "share-project-warning", children: "L\u2019import cr\u00E9e une copie du chantier dans ton compte. Les fichiers stock\u00E9s uniquement sur l\u2019ordinateur de l\u2019exp\u00E9diteur ne sont pas transf\u00E9r\u00E9s." })] }), (0, jsx_runtime_1.jsxs)("footer", { className: "modal-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => { setSharedProjectPayload(undefined); (0, projectSharing_1.clearSharedProjectHash)(); }, children: "Refuser" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", disabled: importingSharedProject, onClick: () => void importSharedProject(), children: importingSharedProject ? 'Import en cours…' : 'Importer le chantier' })] })] })), newProjectOpen && ((0, jsx_runtime_1.jsxs)(Modal_1.Modal, { title: "Cr\u00E9er un chantier", onClose: () => setNewProjectOpen(false), children: [(0, jsx_runtime_1.jsxs)("div", { className: "form-grid", children: [(0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Nom du chantier *" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.name, onChange: (event) => setNewProject({ ...newProject, name: event.target.value }), placeholder: "Ex. DUPONT" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "N\u00B0 de dossier" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.projectNumber, onChange: (event) => setNewProject({ ...newProject, projectNumber: event.target.value }), placeholder: "Ex. 2026-014" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Nom du client *" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.clientName, onChange: (event) => setNewProject({ ...newProject, clientName: event.target.value }), placeholder: "M. et Mme Dupont" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E9l\u00E9phone" }), (0, jsx_runtime_1.jsx)("input", { type: "tel", value: newProject.clientPhone, onChange: (event) => setNewProject({ ...newProject, clientPhone: event.target.value }), placeholder: "06 00 00 00 00" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "E-mail" }), (0, jsx_runtime_1.jsx)("input", { type: "email", value: newProject.clientEmail, onChange: (event) => setNewProject({ ...newProject, clientEmail: event.target.value }), placeholder: "client@email.fr" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Adresse du chantier" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.address, onChange: (event) => setNewProject({ ...newProject, address: event.target.value }), placeholder: "Num\u00E9ro et rue" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Code postal" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.postalCode, onChange: (event) => setNewProject({ ...newProject, postalCode: event.target.value }), placeholder: "87000" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Ville *" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.city, onChange: (event) => setNewProject({ ...newProject, city: event.target.value }), placeholder: "Ex. Limoges" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Date d'ouverture" }), (0, jsx_runtime_1.jsx)("input", { type: "date", value: newProject.startDate, onChange: (event) => setNewProject({ ...newProject, startDate: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "R\u00E9ception cible" }), (0, jsx_runtime_1.jsx)("input", { type: "date", value: newProject.targetEndDate, onChange: (event) => setNewProject({ ...newProject, targetEndDate: event.target.value }) })] })] }), (0, jsx_runtime_1.jsxs)("p", { className: "form-note", children: ["Le dossier client et la trame compl\u00E8te de ", stages_1.STAGES.length, " \u00E9tapes seront cr\u00E9\u00E9s ensemble. Tu pourras compl\u00E9ter les informations depuis l\u2019onglet Chantiers."] }), (0, jsx_runtime_1.jsxs)("footer", { className: "modal-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setNewProjectOpen(false), children: "Annuler" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", disabled: saving, onClick: createProject, children: saving ? 'Création…' : 'Créer le chantier' })] })] })), message && (0, jsx_runtime_1.jsxs)("div", { className: "toast success", children: ["\u2713 ", message] }), error && (0, jsx_runtime_1.jsxs)("div", { className: "toast error", children: [(0, jsx_runtime_1.jsx)("span", { children: error }), (0, jsx_runtime_1.jsx)("button", { onClick: () => setError(undefined), children: "\u00D7" })] })] }));
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "app-shell", children: [(0, jsx_runtime_1.jsx)(Sidebar_1.Sidebar, { active: view, onChange: setView, notificationCount: notifications.length, taskCount: tasks.filter((task) => !task.completedAt).length }), (0, jsx_runtime_1.jsxs)("main", { className: "main-shell", children: [(0, jsx_runtime_1.jsxs)("div", { className: "topbar", children: [(0, jsx_runtime_1.jsx)("div", {}), (0, jsx_runtime_1.jsxs)("div", { className: "topbar-actions", children: [(0, jsx_runtime_1.jsxs)("button", { className: "notification-button", onClick: () => setView('notifications'), "aria-label": "Voir les alertes", children: ["!", (0, jsx_runtime_1.jsx)("span", { children: notifications.length })] }), (0, jsx_runtime_1.jsx)("button", { className: "logout-button", onClick: handleLogout, children: "D\u00E9connexion" }), (0, jsx_runtime_1.jsxs)("div", { className: "user-chip", children: [(0, jsx_runtime_1.jsx)("div", { children: (currentUser.name || currentUser.email).slice(0, 2).toUpperCase() }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: currentUser.name || 'Conducteur de travaux' }), (0, jsx_runtime_1.jsx)("small", { children: currentUser.email })] })] })] })] }), (0, jsx_runtime_1.jsx)("div", { className: "page-content", children: (0, jsx_runtime_1.jsxs)(ViewErrorBoundary_1.ViewErrorBoundary, { children: [view === 'dashboard' && (0, jsx_runtime_1.jsx)(Dashboard_1.Dashboard, { projects: activeProjects, notifications: notifications, tasks: tasks, calendarEvents: calendarEvents, onOpenPlanning: () => setView('planning'), onOpenWeek: () => setView('week'), onOpenCalendar: () => setView('calendar'), onOpenProject: openProject, onOpenTasks: () => setView('tasks'), onCompleteTask: handleCompleteTask }), view === 'week' && (0, jsx_runtime_1.jsx)(WeekView_1.WeekView, { projects: activeProjects, onOpenProject: openProject, onOpenPlanning: () => setView('planning') }), view === 'calendar' && (0, jsx_runtime_1.jsx)(CalendarView_1.CalendarView, { projects: activeProjects, events: calendarEvents, onSaveEvent: handleSaveCalendarEvent, onDeleteEvent: handleDeleteCalendarEvent }), view === 'tasks' && (0, jsx_runtime_1.jsx)(TasksView_1.TasksView, { projects: activeProjects, tasks: tasks, onCreate: handleCreateTask, onComplete: handleCompleteTask, onDelete: handleDeleteTask }), view === 'planning' && (0, jsx_runtime_1.jsx)(PlanningBoard_1.PlanningBoard, { projects: activeProjects, lots: lots, artisans: artisans, onSaveProject: handleSaveProject, onAddProject: () => setNewProjectOpen(true) }), view === 'projects' && ((0, jsx_runtime_1.jsx)(ProjectsView_1.ProjectsView, { projects: projects, documents: documents, selectedProjectId: selectedProjectId, onSelect: setSelectedProjectId, onAddProject: () => setNewProjectOpen(true), onSaveProject: handleSaveProject, onArchiveProject: handleArchiveProject, onRestoreProject: handleRestoreProject, onOpenDocument: handleOpenDocument, currentUserEmail: currentUser.email })), view === 'documents' && (0, jsx_runtime_1.jsx)(DocumentsView_1.DocumentsView, { projects: activeProjects, documents: documents, onUpload: handleUpload, onOpenDocument: handleOpenDocument, onMoveDocument: handleMoveDocument, onDeleteDocument: handleDeleteDocument }), view === 'orders' && (0, jsx_runtime_1.jsx)(OrdersView_1.OrdersView, { projects: activeProjects, artisans: artisans, documents: documents }), view === 'artisans' && ((0, jsx_runtime_1.jsx)(ArtisansView_1.ArtisansView, { lots: lots, artisans: artisans, onSaveLot: handleSaveLot, onDeleteLot: handleDeleteLot, onSaveArtisan: handleSaveArtisan, onDeleteArtisan: handleDeleteArtisan, onUploadConvention: handleUploadConvention })), view === 'notifications' && (0, jsx_runtime_1.jsx)(NotificationsView_1.NotificationsView, { notifications: notifications, onDismiss: handleDismissNotification })] }, view) })] }), sharedProjectPayload && ((0, jsx_runtime_1.jsxs)(Modal_1.Modal, { title: "Chantier partag\u00E9", onClose: () => { setSharedProjectPayload(undefined); (0, projectSharing_1.clearSharedProjectHash)(); }, children: [(0, jsx_runtime_1.jsxs)("div", { className: "shared-project-import", children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Invitation re\u00E7ue" }), (0, jsx_runtime_1.jsx)("h3", { children: sharedProjectPayload.project.name }), (0, jsx_runtime_1.jsxs)("p", { children: [sharedProjectPayload.project.clientName, " \u00B7 ", sharedProjectPayload.project.city] }), sharedProjectPayload.sharedBy && (0, jsx_runtime_1.jsxs)("small", { children: ["Partag\u00E9 par ", sharedProjectPayload.sharedBy] }), (0, jsx_runtime_1.jsxs)("div", { className: "shared-project-summary", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes" }), (0, jsx_runtime_1.jsx)("strong", { children: sharedProjectPayload.project.stages.length })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Avancement" }), (0, jsx_runtime_1.jsxs)("strong", { children: [(0, planning_1.getProgress)(sharedProjectPayload.project), "%"] })] })] }), (0, jsx_runtime_1.jsx)("p", { className: "share-project-warning", children: "L\u2019import cr\u00E9e une copie du chantier dans ton compte. Les fichiers stock\u00E9s uniquement sur l\u2019ordinateur de l\u2019exp\u00E9diteur ne sont pas transf\u00E9r\u00E9s." })] }), (0, jsx_runtime_1.jsxs)("footer", { className: "modal-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => { setSharedProjectPayload(undefined); (0, projectSharing_1.clearSharedProjectHash)(); }, children: "Refuser" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", disabled: importingSharedProject, onClick: () => void importSharedProject(), children: importingSharedProject ? 'Import en cours…' : 'Importer le chantier' })] })] })), newProjectOpen && ((0, jsx_runtime_1.jsxs)(Modal_1.Modal, { title: "Cr\u00E9er un chantier", onClose: () => setNewProjectOpen(false), children: [(0, jsx_runtime_1.jsxs)("div", { className: "form-grid", children: [(0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Nom du chantier *" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.name, onChange: (event) => setNewProject({ ...newProject, name: event.target.value }), placeholder: "Ex. DUPONT" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "N\u00B0 de dossier" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.projectNumber, onChange: (event) => setNewProject({ ...newProject, projectNumber: event.target.value }), placeholder: "Ex. 2026-014" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Nom du client *" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.clientName, onChange: (event) => setNewProject({ ...newProject, clientName: event.target.value }), placeholder: "M. et Mme Dupont" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E9l\u00E9phone" }), (0, jsx_runtime_1.jsx)("input", { type: "tel", value: newProject.clientPhone, onChange: (event) => setNewProject({ ...newProject, clientPhone: event.target.value }), placeholder: "06 00 00 00 00" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "E-mail" }), (0, jsx_runtime_1.jsx)("input", { type: "email", value: newProject.clientEmail, onChange: (event) => setNewProject({ ...newProject, clientEmail: event.target.value }), placeholder: "client@email.fr" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Adresse du chantier" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.address, onChange: (event) => setNewProject({ ...newProject, address: event.target.value }), placeholder: "Num\u00E9ro et rue" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Code postal" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.postalCode, onChange: (event) => setNewProject({ ...newProject, postalCode: event.target.value }), placeholder: "87000" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Ville *" }), (0, jsx_runtime_1.jsx)("input", { value: newProject.city, onChange: (event) => setNewProject({ ...newProject, city: event.target.value }), placeholder: "Ex. Limoges" })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Date d'ouverture" }), (0, jsx_runtime_1.jsx)("input", { type: "date", value: newProject.startDate, onChange: (event) => setNewProject({ ...newProject, startDate: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "R\u00E9ception cible" }), (0, jsx_runtime_1.jsx)("input", { type: "date", value: newProject.targetEndDate, onChange: (event) => setNewProject({ ...newProject, targetEndDate: event.target.value }) })] })] }), (0, jsx_runtime_1.jsxs)("p", { className: "form-note", children: ["Le dossier client et la trame compl\u00E8te de ", stages_1.STAGES.length, " \u00E9tapes seront cr\u00E9\u00E9s ensemble. Tu pourras compl\u00E9ter les informations depuis l\u2019onglet Chantiers."] }), (0, jsx_runtime_1.jsxs)("footer", { className: "modal-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setNewProjectOpen(false), children: "Annuler" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", disabled: saving, onClick: createProject, children: saving ? 'Création…' : 'Créer le chantier' })] })] })), message && (0, jsx_runtime_1.jsxs)("div", { className: "toast success", children: ["\u2713 ", message] }), error && (0, jsx_runtime_1.jsxs)("div", { className: "toast error", children: [(0, jsx_runtime_1.jsx)("span", { children: error }), (0, jsx_runtime_1.jsx)("button", { onClick: () => setError(undefined), children: "\u00D7" })] })] }));
 }
 exports.default = App;
 
@@ -669,6 +699,7 @@ function ArtisansView({ lots, artisans, onSaveLot, onDeleteLot, onSaveArtisan, o
                 setLotFilter('all');
         }
         catch {
+            // Le parent affiche déjà le message d'erreur.
         }
     };
     const startCreateArtisan = (lotId) => {
@@ -789,6 +820,7 @@ function ArtisansView({ lots, artisans, onSaveLot, onDeleteLot, onSaveArtisan, o
                 setSelected(null);
         }
         catch {
+            // Le parent affiche déjà le message d'erreur.
         }
     };
     const selectedStageNames = selected ? (0, artisans_1.getArtisanStageNames)(selected, lots) : [];
@@ -856,6 +888,126 @@ function AuthScreen({ onAuthenticated }) {
 }
 
 },
+"src/components/CalendarView": function(module, exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CalendarView = CalendarView;
+const jsx_runtime_1 = require("react/jsx-runtime");
+const react_1 = require("react");
+const Modal_1 = require("./Modal");
+const calendar_1 = require("../lib/calendar");
+const hours = Array.from({ length: calendar_1.CALENDAR_END_HOUR - calendar_1.CALENDAR_START_HOUR + 1 }, (_, index) => calendar_1.CALENDAR_START_HOUR + index);
+const calendarHeight = (calendar_1.CALENDAR_END_HOUR - calendar_1.CALENDAR_START_HOUR) * calendar_1.CALENDAR_HOUR_HEIGHT;
+function makeDraft(date) {
+    const times = (0, calendar_1.defaultCalendarTimes)();
+    return { projectId: '', date, startTime: times.startTime, endTime: times.endTime, note: '' };
+}
+function CalendarView({ projects, events, onSaveEvent, onDeleteEvent }) {
+    const [weekOffset, setWeekOffset] = (0, react_1.useState)(0);
+    const [draft, setDraft] = (0, react_1.useState)();
+    const [saving, setSaving] = (0, react_1.useState)(false);
+    const [error, setError] = (0, react_1.useState)();
+    const weekStart = (0, react_1.useMemo)(() => {
+        const monday = (0, calendar_1.startOfIsoWeek)();
+        monday.setDate(monday.getDate() + weekOffset * 7);
+        return monday;
+    }, [weekOffset]);
+    const days = (0, react_1.useMemo)(() => Array.from({ length: 5 }, (_, index) => (0, calendar_1.addDays)(weekStart, index)), [weekStart]);
+    const dayIds = (0, react_1.useMemo)(() => days.map(calendar_1.localDateId), [days]);
+    const todayId = (0, calendar_1.localDateId)();
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentTimeTop = ((currentMinutes - calendar_1.CALENDAR_START_HOUR * 60) / 60) * calendar_1.CALENDAR_HOUR_HEIGHT;
+    const openNewEvent = () => {
+        const preferredDate = dayIds.includes(todayId) ? todayId : dayIds[0];
+        setError(undefined);
+        setDraft(makeDraft(preferredDate));
+    };
+    const openEvent = (event) => {
+        setError(undefined);
+        setDraft({
+            id: event.id,
+            projectId: event.projectId || '',
+            date: event.date,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            note: event.note,
+            createdAt: event.createdAt,
+        });
+    };
+    const saveEvent = async () => {
+        if (!draft)
+            return;
+        if (!draft.date || !draft.startTime || !draft.endTime || !draft.note.trim()) {
+            setError('La date, les horaires et la raison du rendez-vous sont obligatoires.');
+            return;
+        }
+        const start = (0, calendar_1.timeToMinutes)(draft.startTime);
+        const end = (0, calendar_1.timeToMinutes)(draft.endTime);
+        if (start < calendar_1.CALENDAR_START_HOUR * 60 || end > calendar_1.CALENDAR_END_HOUR * 60 || end <= start) {
+            setError('Le rendez-vous doit être compris entre 6 h et 20 h, avec une heure de fin après le début.');
+            return;
+        }
+        setSaving(true);
+        const timestamp = new Date().toISOString();
+        try {
+            await onSaveEvent({
+                id: draft.id || `calendar-${crypto.randomUUID()}`,
+                projectId: draft.projectId || undefined,
+                date: draft.date,
+                startTime: draft.startTime,
+                endTime: draft.endTime,
+                note: draft.note.trim(),
+                createdAt: draft.createdAt || timestamp,
+                updatedAt: timestamp,
+            });
+            setDraft(undefined);
+        }
+        catch (reason) {
+            setError(reason instanceof Error ? reason.message : 'Enregistrement du rendez-vous impossible.');
+        }
+        finally {
+            setSaving(false);
+        }
+    };
+    const deleteEvent = async () => {
+        if (!draft?.id)
+            return;
+        const event = events.find((item) => item.id === draft.id);
+        if (!event || !window.confirm('Supprimer ce rendez-vous du calendrier ?'))
+            return;
+        setSaving(true);
+        try {
+            await onDeleteEvent(event);
+            setDraft(undefined);
+        }
+        catch (reason) {
+            setError(reason instanceof Error ? reason.message : 'Suppression du rendez-vous impossible.');
+        }
+        finally {
+            setSaving(false);
+        }
+    };
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack calendar-view", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header calendar-page-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Rendez-vous et organisation" }), (0, jsx_runtime_1.jsx)("h1", { children: "Calendrier" }), (0, jsx_runtime_1.jsxs)("p", { children: ["Semaine ", (0, calendar_1.getIsoWeek)(weekStart), " \u00B7 ", (0, calendar_1.formatCalendarRange)(days[0], days[4])] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "calendar-header-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset((value) => value - 1), children: "\u2190 Pr\u00E9c\u00E9dente" }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset(0), children: "Aujourd\u2019hui" }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset((value) => value + 1), children: "Suivante \u2192" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: openNewEvent, children: "+ Ajouter un \u00E9v\u00E9nement" })] })] }), (0, jsx_runtime_1.jsx)("section", { className: "calendar-panel panel", children: (0, jsx_runtime_1.jsx)("div", { className: "calendar-scroll", children: (0, jsx_runtime_1.jsxs)("div", { className: "calendar-week-grid", children: [(0, jsx_runtime_1.jsx)("div", { className: "calendar-corner", children: (0, jsx_runtime_1.jsx)("span", { children: "Heure" }) }), days.map((day) => {
+                                const dateId = (0, calendar_1.localDateId)(day);
+                                const count = events.filter((event) => event.date === dateId).length;
+                                return ((0, jsx_runtime_1.jsxs)("header", { className: `calendar-day-header${dateId === todayId ? ' today' : ''}`, children: [(0, jsx_runtime_1.jsx)("span", { children: (0, calendar_1.formatCalendarDay)(day) }), (0, jsx_runtime_1.jsx)("strong", { children: count })] }, dateId));
+                            }), (0, jsx_runtime_1.jsx)("div", { className: "calendar-time-axis", style: { height: `${calendarHeight}px` }, children: hours.map((hour, index) => ((0, jsx_runtime_1.jsxs)("span", { style: { top: `${index * calendar_1.CALENDAR_HOUR_HEIGHT}px` }, children: [String(hour).padStart(2, '0'), ":00"] }, hour))) }), days.map((day) => {
+                                const dateId = (0, calendar_1.localDateId)(day);
+                                const dayEvents = events
+                                    .filter((event) => event.date === dateId)
+                                    .slice()
+                                    .sort((left, right) => left.startTime.localeCompare(right.startTime));
+                                const showCurrentTime = dateId === todayId && currentMinutes >= calendar_1.CALENDAR_START_HOUR * 60 && currentMinutes <= calendar_1.CALENDAR_END_HOUR * 60;
+                                return ((0, jsx_runtime_1.jsxs)("div", { className: `calendar-day-column${dateId === todayId ? ' today' : ''}`, style: { height: `${calendarHeight}px` }, children: [hours.slice(0, -1).map((hour, index) => (0, jsx_runtime_1.jsx)("i", { className: "calendar-hour-line", style: { top: `${index * calendar_1.CALENDAR_HOUR_HEIGHT}px` } }, hour)), showCurrentTime && (0, jsx_runtime_1.jsx)("div", { className: "calendar-current-time", style: { top: `${currentTimeTop}px` }, children: (0, jsx_runtime_1.jsx)("span", {}) }), dayEvents.map((event, index) => {
+                                            const project = projects.find((item) => item.id === event.projectId);
+                                            const geometry = (0, calendar_1.getCalendarEventGeometry)(event);
+                                            return ((0, jsx_runtime_1.jsxs)("button", { className: "calendar-event-card", style: { top: `${geometry.top}px`, height: `${geometry.height}px`, left: `${6 + (index % 2) * 3}px`, right: `${6 - (index % 2) * 3}px` }, onClick: () => openEvent(event), title: `${event.startTime} - ${event.endTime} · ${event.note}`, children: [(0, jsx_runtime_1.jsxs)("span", { children: [event.startTime, " - ", event.endTime] }), (0, jsx_runtime_1.jsx)("strong", { children: project?.name || 'Rendez-vous général' }), (0, jsx_runtime_1.jsx)("small", { children: event.note })] }, event.id));
+                                        })] }, dateId));
+                            })] }) }) }), draft && ((0, jsx_runtime_1.jsxs)(Modal_1.Modal, { title: draft.id ? 'Modifier le rendez-vous' : 'Ajouter un rendez-vous', onClose: () => setDraft(undefined), children: [(0, jsx_runtime_1.jsxs)("div", { className: "form-grid calendar-event-form", children: [(0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier concern\u00E9" }), (0, jsx_runtime_1.jsxs)("select", { value: draft.projectId, onChange: (event) => setDraft({ ...draft, projectId: event.target.value }), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Rendez-vous g\u00E9n\u00E9ral" }), projects.map((project) => (0, jsx_runtime_1.jsxs)("option", { value: project.id, children: [project.name, " \u2014 ", project.city] }, project.id))] })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Date *" }), (0, jsx_runtime_1.jsx)("input", { type: "date", value: draft.date, onChange: (event) => setDraft({ ...draft, date: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "D\u00E9but *" }), (0, jsx_runtime_1.jsx)("input", { type: "time", min: "06:00", max: "19:30", step: "900", value: draft.startTime, onChange: (event) => setDraft({ ...draft, startTime: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Fin *" }), (0, jsx_runtime_1.jsx)("input", { type: "time", min: "06:30", max: "20:00", step: "900", value: draft.endTime, onChange: (event) => setDraft({ ...draft, endTime: event.target.value }) })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Raison / note *" }), (0, jsx_runtime_1.jsx)("textarea", { rows: 5, value: draft.note, onChange: (event) => setDraft({ ...draft, note: event.target.value }), placeholder: "Ex. R\u00E9union de mise au point avec le client, contr\u00F4le avant coulage\u2026" })] })] }), error && (0, jsx_runtime_1.jsx)("p", { className: "calendar-form-error", children: error }), (0, jsx_runtime_1.jsxs)("footer", { className: "modal-actions calendar-modal-actions", children: [draft.id && (0, jsx_runtime_1.jsx)("button", { className: "danger-outline-button", disabled: saving, onClick: () => void deleteEvent(), children: "Supprimer" }), (0, jsx_runtime_1.jsx)("span", {}), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", disabled: saving, onClick: () => setDraft(undefined), children: "Annuler" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", disabled: saving, onClick: () => void saveEvent(), children: saving ? 'Enregistrement…' : 'Enregistrer' })] })] }))] }));
+}
+
+},
 "src/components/Dashboard": function(module, exports, require) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -864,7 +1016,10 @@ const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const stages_1 = require("../data/stages");
 const planning_1 = require("../lib/planning");
+const calendar_1 = require("../lib/calendar");
 const priorityRank = { urgent: 0, high: 1, normal: 2 };
+const miniHours = Array.from({ length: calendar_1.CALENDAR_END_HOUR - calendar_1.CALENDAR_START_HOUR + 1 }, (_, index) => calendar_1.CALENDAR_START_HOUR + index);
+const miniCalendarHeight = (calendar_1.CALENDAR_END_HOUR - calendar_1.CALENDAR_START_HOUR) * calendar_1.MINI_CALENDAR_HOUR_HEIGHT;
 function sortTasks(a, b) {
     const priorityDifference = priorityRank[a.priority] - priorityRank[b.priority];
     if (priorityDifference !== 0)
@@ -877,23 +1032,24 @@ function sortTasks(a, b) {
         return 1;
     return b.createdAt.localeCompare(a.createdAt);
 }
-function getIsoWeek(date = new Date()) {
-    const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNumber = target.getUTCDay() || 7;
-    target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
-    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
-    return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
 function formatTaskDate(value) {
     if (!value)
         return 'Sans échéance';
     return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(new Date(`${value}T12:00:00`));
 }
-function Dashboard({ projects, notifications, tasks, onOpenPlanning, onOpenWeek, onOpenProject, onOpenTasks, onCompleteTask }) {
+function Dashboard({ projects, notifications, tasks, calendarEvents, onOpenPlanning, onOpenWeek, onOpenCalendar, onOpenProject, onOpenTasks, onCompleteTask }) {
     const [completingIds, setCompletingIds] = (0, react_1.useState)([]);
     const late = projects.filter(planning_1.isProjectLate).length;
-    const average = projects.length ? Math.round(projects.reduce((total, item) => total + (0, planning_1.getProgress)(item), 0) / projects.length) : 0;
     const activeTasks = tasks.filter((task) => !task.completedAt).sort(sortTasks);
+    const today = new Date();
+    const todayId = (0, calendar_1.localDateId)(today);
+    const todayEvents = calendarEvents.filter((event) => event.date === todayId).slice().sort((left, right) => left.startTime.localeCompare(right.startTime));
+    const currentMinutes = today.getHours() * 60 + today.getMinutes();
+    const currentTimeTop = ((currentMinutes - calendar_1.CALENDAR_START_HOUR * 60) / 60) * calendar_1.MINI_CALENDAR_HOUR_HEIGHT;
+    const showCurrentTime = currentMinutes >= calendar_1.CALENDAR_START_HOUR * 60 && currentMinutes <= calendar_1.CALENDAR_END_HOUR * 60;
+    const dayNumber = new Intl.DateTimeFormat('fr-FR', { day: '2-digit' }).format(today);
+    const dayName = new Intl.DateTimeFormat('fr-FR', { weekday: 'long' }).format(today);
+    const monthName = new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(today);
     const completeTask = (task) => {
         if (completingIds.includes(task.id))
             return;
@@ -907,11 +1063,15 @@ function Dashboard({ projects, notifications, tasks, onOpenPlanning, onOpenWeek,
             }
         }, 680);
     };
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header dashboard-home-header", children: [(0, jsx_runtime_1.jsx)("div", { className: "dashboard-home-heading", children: (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Vue g\u00E9n\u00E9rale" }), (0, jsx_runtime_1.jsx)("h1", { children: "Tableau de bord" })] }) }), (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-header-actions", children: [(0, jsx_runtime_1.jsxs)("button", { className: "week-number-pill", onClick: onOpenWeek, children: [(0, jsx_runtime_1.jsx)("span", { children: "Semaine actuelle" }), (0, jsx_runtime_1.jsx)("strong", { children: getIsoWeek() })] }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: onOpenPlanning, children: "Ouvrir le planning" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "kpi-grid", children: [(0, jsx_runtime_1.jsxs)("article", { className: "kpi-card", children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantiers actifs" }), (0, jsx_runtime_1.jsx)("strong", { children: projects.length }), (0, jsx_runtime_1.jsxs)("small", { children: [projects.filter((project) => !(0, planning_1.isProjectLate)(project)).length, " dans les temps"] })] }), (0, jsx_runtime_1.jsxs)("article", { className: "kpi-card task-soft", children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E2ches \u00E0 faire" }), (0, jsx_runtime_1.jsx)("strong", { children: activeTasks.length }), (0, jsx_runtime_1.jsxs)("small", { children: [activeTasks.filter((task) => task.priority === 'urgent').length, " urgente(s)"] })] }), (0, jsx_runtime_1.jsxs)("article", { className: "kpi-card danger-soft", children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantiers en retard" }), (0, jsx_runtime_1.jsx)("strong", { children: late }), (0, jsx_runtime_1.jsx)("small", { children: "\u00C0 traiter en priorit\u00E9" })] }), (0, jsx_runtime_1.jsxs)("article", { className: "kpi-card warning-soft", children: [(0, jsx_runtime_1.jsx)("span", { children: "Alertes \u00E0 venir" }), (0, jsx_runtime_1.jsx)("strong", { children: notifications.length }), (0, jsx_runtime_1.jsx)("small", { children: "Artisans \u00E0 pr\u00E9venir" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "panel dashboard-tasks-panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Prioritaire" }), (0, jsx_runtime_1.jsx)("h2", { children: "Mes t\u00E2ches" })] }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: onOpenTasks, children: "G\u00E9rer toutes les t\u00E2ches" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-task-list", children: [!activeTasks.length && ((0, jsx_runtime_1.jsxs)("button", { className: "dashboard-task-empty", onClick: onOpenTasks, children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2713" }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Aucune t\u00E2che en attente." }), (0, jsx_runtime_1.jsx)("small", { children: "Cliquer ici pour en ajouter une." })] })] })), activeTasks.slice(0, 6).map((task) => {
-                                const project = projects.find((item) => item.id === task.projectId);
-                                const completing = completingIds.includes(task.id);
-                                return ((0, jsx_runtime_1.jsxs)("article", { className: `dashboard-task-row priority-${task.priority}${completing ? ' completing' : ''}`, children: [(0, jsx_runtime_1.jsx)("button", { className: "task-check", onClick: () => completeTask(task), "aria-label": `Terminer ${task.title}`, children: (0, jsx_runtime_1.jsx)("span", { children: "\u2713" }) }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: task.title }), (0, jsx_runtime_1.jsxs)("small", { children: [project ? `${project.name} · ` : '', formatTaskDate(task.dueDate)] })] }), task.priority !== 'normal' && (0, jsx_runtime_1.jsx)("span", { className: `task-priority ${task.priority}`, children: task.priority === 'urgent' ? 'Urgente' : 'Importante' })] }, task.id));
-                            }), activeTasks.length > 6 && (0, jsx_runtime_1.jsxs)("button", { className: "dashboard-task-more", onClick: onOpenTasks, children: ["+ ", activeTasks.length - 6, " autre(s) t\u00E2che(s)"] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "dashboard-grid", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel project-panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Portefeuille" }), (0, jsx_runtime_1.jsx)("h2", { children: "Avancement des chantiers" })] }), (0, jsx_runtime_1.jsxs)("span", { className: "muted", children: [stages_1.STAGES.length, " \u00E9tapes par trame"] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "project-progress-list", children: [!projects.length && ((0, jsx_runtime_1.jsxs)("div", { className: "empty-state", children: [(0, jsx_runtime_1.jsx)("strong", { children: "Aucun chantier enregistr\u00E9." }), (0, jsx_runtime_1.jsx)("span", { children: "Cr\u00E9e ton premier dossier depuis le planning ou l\u2019onglet Chantiers." })] })), projects.map((project) => {
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header dashboard-home-header", children: [(0, jsx_runtime_1.jsx)("div", { className: "dashboard-home-heading", children: (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Vue g\u00E9n\u00E9rale" }), (0, jsx_runtime_1.jsx)("h1", { children: "Tableau de bord" })] }) }), (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-header-actions", children: [(0, jsx_runtime_1.jsxs)("button", { className: "week-number-pill", onClick: onOpenWeek, children: [(0, jsx_runtime_1.jsx)("span", { children: "Semaine actuelle" }), (0, jsx_runtime_1.jsx)("strong", { children: (0, calendar_1.getIsoWeek)() })] }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: onOpenPlanning, children: "Ouvrir le planning" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "kpi-grid", children: [(0, jsx_runtime_1.jsxs)("article", { className: "kpi-card", children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantiers actifs" }), (0, jsx_runtime_1.jsx)("strong", { children: projects.length }), (0, jsx_runtime_1.jsxs)("small", { children: [projects.filter((project) => !(0, planning_1.isProjectLate)(project)).length, " dans les temps"] })] }), (0, jsx_runtime_1.jsxs)("article", { className: "kpi-card task-soft", children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E2ches \u00E0 faire" }), (0, jsx_runtime_1.jsx)("strong", { children: activeTasks.length }), (0, jsx_runtime_1.jsxs)("small", { children: [activeTasks.filter((task) => task.priority === 'urgent').length, " urgente(s)"] })] }), (0, jsx_runtime_1.jsxs)("article", { className: "kpi-card danger-soft", children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantiers en retard" }), (0, jsx_runtime_1.jsx)("strong", { children: late }), (0, jsx_runtime_1.jsx)("small", { children: "\u00C0 traiter en priorit\u00E9" })] }), (0, jsx_runtime_1.jsxs)("article", { className: "kpi-card warning-soft", children: [(0, jsx_runtime_1.jsx)("span", { children: "Alertes \u00E0 venir" }), (0, jsx_runtime_1.jsx)("strong", { children: notifications.length }), (0, jsx_runtime_1.jsx)("small", { children: "Artisans \u00E0 pr\u00E9venir" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "dashboard-focus-grid", children: [(0, jsx_runtime_1.jsxs)("section", { className: "panel dashboard-tasks-panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Prioritaire" }), (0, jsx_runtime_1.jsx)("h2", { children: "Mes t\u00E2ches" })] }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: onOpenTasks, children: "G\u00E9rer toutes les t\u00E2ches" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-task-list", children: [!activeTasks.length && ((0, jsx_runtime_1.jsxs)("button", { className: "dashboard-task-empty", onClick: onOpenTasks, children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2713" }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Aucune t\u00E2che en attente." }), (0, jsx_runtime_1.jsx)("small", { children: "Cliquer ici pour en ajouter une." })] })] })), activeTasks.slice(0, 6).map((task) => {
+                                        const project = projects.find((item) => item.id === task.projectId);
+                                        const completing = completingIds.includes(task.id);
+                                        return ((0, jsx_runtime_1.jsxs)("article", { className: `dashboard-task-row priority-${task.priority}${completing ? ' completing' : ''}`, children: [(0, jsx_runtime_1.jsx)("button", { className: "task-check", onClick: () => completeTask(task), "aria-label": `Terminer ${task.title}`, children: (0, jsx_runtime_1.jsx)("span", { children: "\u2713" }) }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: task.title }), (0, jsx_runtime_1.jsxs)("small", { children: [project ? `${project.name} · ` : '', formatTaskDate(task.dueDate)] })] }), task.priority !== 'normal' && (0, jsx_runtime_1.jsx)("span", { className: `task-priority ${task.priority}`, children: task.priority === 'urgent' ? 'Urgente' : 'Importante' })] }, task.id));
+                                    }), activeTasks.length > 6 && (0, jsx_runtime_1.jsxs)("button", { className: "dashboard-task-more", onClick: onOpenTasks, children: ["+ ", activeTasks.length - 6, " autre(s) t\u00E2che(s)"] })] })] }), (0, jsx_runtime_1.jsxs)("aside", { className: "panel dashboard-day-agenda", children: [(0, jsx_runtime_1.jsxs)("header", { className: "dashboard-day-header", children: [(0, jsx_runtime_1.jsx)("div", { className: "dashboard-day-number", children: dayNumber }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Aujourd\u2019hui" }), (0, jsx_runtime_1.jsx)("strong", { children: dayName }), (0, jsx_runtime_1.jsx)("small", { children: monthName })] }), (0, jsx_runtime_1.jsx)("button", { onClick: onOpenCalendar, "aria-label": "Ouvrir le calendrier", children: "\u2192" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-mini-calendar", onClick: onOpenCalendar, role: "button", tabIndex: 0, children: [(0, jsx_runtime_1.jsx)("div", { className: "dashboard-mini-time-axis", style: { height: `${miniCalendarHeight}px` }, children: miniHours.map((hour, index) => (0, jsx_runtime_1.jsxs)("span", { style: { top: `${index * calendar_1.MINI_CALENDAR_HOUR_HEIGHT}px` }, children: [String(hour).padStart(2, '0'), "h"] }, hour)) }), (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-mini-day", style: { height: `${miniCalendarHeight}px` }, children: [miniHours.slice(0, -1).map((hour, index) => (0, jsx_runtime_1.jsx)("i", { style: { top: `${index * calendar_1.MINI_CALENDAR_HOUR_HEIGHT}px` } }, hour)), showCurrentTime && (0, jsx_runtime_1.jsx)("div", { className: "dashboard-current-time", style: { top: `${currentTimeTop}px` }, children: (0, jsx_runtime_1.jsx)("span", {}) }), todayEvents.map((event) => {
+                                                const project = projects.find((item) => item.id === event.projectId);
+                                                const geometry = (0, calendar_1.getCalendarEventGeometry)(event, calendar_1.MINI_CALENDAR_HOUR_HEIGHT);
+                                                return ((0, jsx_runtime_1.jsxs)("article", { className: "dashboard-mini-event", style: { top: `${geometry.top}px`, height: `${geometry.height}px` }, title: `${event.startTime} - ${event.endTime} · ${event.note}`, children: [(0, jsx_runtime_1.jsx)("strong", { children: project?.name || 'Rendez-vous' }), (0, jsx_runtime_1.jsxs)("small", { children: [event.startTime, " \u00B7 ", event.note] })] }, event.id));
+                                            }), !todayEvents.length && (0, jsx_runtime_1.jsxs)("div", { className: "dashboard-no-event", children: [(0, jsx_runtime_1.jsx)("span", { children: "Aucun rendez-vous aujourd\u2019hui" }), (0, jsx_runtime_1.jsx)("small", { children: "Cliquer pour ouvrir le calendrier" })] })] })] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "dashboard-grid", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel project-panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Portefeuille" }), (0, jsx_runtime_1.jsx)("h2", { children: "Avancement des chantiers" })] }), (0, jsx_runtime_1.jsxs)("span", { className: "muted", children: [stages_1.STAGES.length, " \u00E9tapes par trame"] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "project-progress-list", children: [!projects.length && ((0, jsx_runtime_1.jsxs)("div", { className: "empty-state", children: [(0, jsx_runtime_1.jsx)("strong", { children: "Aucun chantier enregistr\u00E9." }), (0, jsx_runtime_1.jsx)("span", { children: "Cr\u00E9e ton premier dossier depuis le planning ou l\u2019onglet Chantiers." })] })), projects.map((project) => {
                                         const progress = (0, planning_1.getProgress)(project);
                                         const current = (0, planning_1.getCurrentStage)(project);
                                         const next = (0, planning_1.getNextStage)(project);
@@ -1154,7 +1314,10 @@ function OrdersView({ projects, artisans, documents }) {
     const [body, setBody] = (0, react_1.useState)('');
     const [preparing, setPreparing] = (0, react_1.useState)(false);
     const [message, setMessage] = (0, react_1.useState)();
-    const sortedProjects = (0, react_1.useMemo)(() => projects.filter((item) => Boolean(item)).slice().sort((left, right) => naturalCollator.compare(safeText(left.name), safeText(right.name))), [projects]);
+    const sortedProjects = (0, react_1.useMemo)(() => projects
+        .filter((item) => Boolean(item))
+        .slice()
+        .sort((left, right) => naturalCollator.compare(safeText(left.name), safeText(right.name))), [projects]);
     const project = projects.find((item) => item.id === projectId);
     const artisan = artisans.find((item) => item.id === artisanId);
     const projectDocuments = (0, react_1.useMemo)(() => documents
@@ -1230,467 +1393,12 @@ function OrdersView({ projects, artisans, documents }) {
     return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack orders-view", children: [(0, jsx_runtime_1.jsx)("header", { className: "page-header order-page-header", children: (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Pr\u00E9paration Outlook" }), (0, jsx_runtime_1.jsx)("h1", { children: "Commandes" }), (0, jsx_runtime_1.jsx)("p", { children: "Choisis un chantier pour pr\u00E9parer la commande." })] }) }), (0, jsx_runtime_1.jsxs)("section", { className: "panel order-client-picker", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Chantiers actifs" }), (0, jsx_runtime_1.jsx)("h2", { children: "Choisir un chantier" })] }), (0, jsx_runtime_1.jsxs)("span", { className: "muted", children: [sortedProjects.length, " chantier", sortedProjects.length > 1 ? 's' : ''] })] }), sortedProjects.length ? ((0, jsx_runtime_1.jsx)("div", { className: "order-project-list", children: sortedProjects.map((item) => {
                             const projectName = safeText(item.name) || 'Chantier sans nom';
                             const city = safeText(item.city);
-                            return ((0, jsx_runtime_1.jsxs)("button", { type: "button", className: "order-project-row", onClick: () => selectProject(item.id), children: [(0, jsx_runtime_1.jsxs)("span", { className: "order-project-main", children: [(0, jsx_runtime_1.jsx)("strong", { children: projectName }), city ? (0, jsx_runtime_1.jsxs)("span", { className: "order-project-city", children: ["- ", city] }) : null] }), (0, jsx_runtime_1.jsx)("span", { className: "order-project-chevron", "aria-hidden": "true", children: "→" })] }, item.id));
-                        }) })) : (0, jsx_runtime_1.jsxs)("div", { className: "empty-state order-client-empty", children: [(0, jsx_runtime_1.jsx)("strong", { children: "Aucun chantier disponible." }), (0, jsx_runtime_1.jsx)("span", { children: "Cr\u00E9e d\u2019abord un chantier pour pr\u00E9parer une commande." })] })] }), project && ((0, jsx_runtime_1.jsx)(Modal_1.Modal, { title: `Commande — ${safeText(project.clientName) || safeText(project.name) || 'Chantier'}`, onClose: closeOrderWindow, wide: true, children: (0, jsx_runtime_1.jsxs)("div", { className: "order-compose-modal-content", children: [(0, jsx_runtime_1.jsxs)("section", { className: "panel order-selected-client", children: [(0, jsx_runtime_1.jsx)("span", { className: "order-client-avatar", children: getClientInitials(project.clientName || project.name) }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Client s\u00E9lectionn\u00E9" }), (0, jsx_runtime_1.jsx)("strong", { children: safeText(project.clientName) || safeText(project.name) || 'Client sans nom' }), (0, jsx_runtime_1.jsxs)("small", { children: [safeText(project.name) || 'Chantier sans nom', " \u00B7 ", safeText(project.postalCode) ? `${safeText(project.postalCode)} ` : '', safeText(project.city)] })] })] }), (0, jsx_runtime_1.jsx)("section", { className: "panel order-builder", children: (0, jsx_runtime_1.jsxs)("div", { className: "form-grid", children: [(0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier" }), (0, jsx_runtime_1.jsxs)("select", { value: projectId, onChange: (event) => selectProject(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choisir un chantier" }), projects.map((item) => (0, jsx_runtime_1.jsxs)("option", { value: item.id, children: [safeText(item.name) || 'Chantier sans nom', " \u2014 ", safeText(item.city)] }, item.id))] })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise" }), (0, jsx_runtime_1.jsxs)("select", { value: artisanId, onChange: (event) => setArtisanId(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choisir une entreprise" }), artisans.map((item) => (0, jsx_runtime_1.jsx)("option", { value: item.id, children: safeText(item.company) || 'Entreprise sans nom' }, item.id))] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Destinataire" }), (0, jsx_runtime_1.jsx)("input", { value: artisan?.orderEmail || artisan?.email || '', readOnly: true, placeholder: "Adresse r\u00E9cup\u00E9r\u00E9e depuis la fiche entreprise" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Objet" }), (0, jsx_runtime_1.jsx)("input", { value: subject, onChange: (event) => setSubject(event.target.value), placeholder: "Commande \u2014 Chantier..." })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Message" }), (0, jsx_runtime_1.jsx)("textarea", { rows: 7, value: body, onChange: (event) => setBody(event.target.value) })] })] }) }), (0, jsx_runtime_1.jsxs)("section", { className: "panel order-documents", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Pi\u00E8ces jointes" }), (0, jsx_runtime_1.jsx)("h2", { children: "Documents du chantier" })] }), (0, jsx_runtime_1.jsxs)("span", { className: "muted", children: [selectedDocumentIds.length, " s\u00E9lectionn\u00E9(s)"] })] }), (0, jsx_runtime_1.jsx)("div", { className: "order-category-tabs", role: "tablist", "aria-label": "Cat\u00E9gories de documents", children: visibleCategories.map((category) => {
+                            return ((0, jsx_runtime_1.jsxs)("button", { type: "button", className: "order-project-row", onClick: () => selectProject(item.id), children: [(0, jsx_runtime_1.jsxs)("span", { className: "order-project-main", children: [(0, jsx_runtime_1.jsx)("strong", { children: projectName }), city ? (0, jsx_runtime_1.jsxs)("span", { className: "order-project-city", children: ["- ", city] }) : null] }), (0, jsx_runtime_1.jsx)("span", { className: "order-project-chevron", "aria-hidden": "true", children: "\u2192" })] }, item.id));
+                        }) })) : (0, jsx_runtime_1.jsxs)("div", { className: "empty-state order-client-empty", children: [(0, jsx_runtime_1.jsx)("strong", { children: "Aucun chantier disponible." }), (0, jsx_runtime_1.jsx)("span", { children: "Cr\u00E9e d\u2019abord un chantier pour pr\u00E9parer une commande." })] })] }), project && ((0, jsx_runtime_1.jsx)(Modal_1.Modal, { title: `Commande — ${safeText(project.clientName) || safeText(project.name) || 'Chantier'}`, onClose: closeOrderWindow, wide: true, children: (0, jsx_runtime_1.jsxs)("div", { className: "order-compose-modal-content", children: [(0, jsx_runtime_1.jsxs)("section", { className: "panel order-selected-client", children: [(0, jsx_runtime_1.jsx)("span", { className: "order-client-avatar", children: getClientInitials(project.clientName || project.name) }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Client s\u00E9lectionn\u00E9" }), (0, jsx_runtime_1.jsx)("strong", { children: safeText(project.clientName) || safeText(project.name) || 'Client sans nom' }), (0, jsx_runtime_1.jsxs)("small", { children: [safeText(project.name) || 'Chantier sans nom', " \u00B7 ", safeText(project.postalCode) ? `${safeText(project.postalCode)} ` : '', safeText(project.city)] })] })] }), (0, jsx_runtime_1.jsx)("section", { className: "panel order-builder", children: (0, jsx_runtime_1.jsxs)("div", { className: "form-grid", children: [(0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier" }), (0, jsx_runtime_1.jsxs)("select", { value: projectId, onChange: (event) => selectProject(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choisir un chantier" }), projects.map((item) => (0, jsx_runtime_1.jsxs)("option", { value: item.id, children: [safeText(item.name) || 'Chantier sans nom', " \u2014 ", safeText(item.city)] }, item.id))] })] }), (0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise" }), (0, jsx_runtime_1.jsxs)("select", { value: artisanId, onChange: (event) => setArtisanId(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choisir une entreprise" }), artisans.map((item) => (0, jsx_runtime_1.jsx)("option", { value: item.id, children: safeText(item.company) || 'Entreprise sans nom' }, item.id))] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Destinataire" }), (0, jsx_runtime_1.jsx)("input", { value: artisan?.orderEmail || artisan?.email || '', readOnly: true, placeholder: "Adresse r\u00E9cup\u00E9r\u00E9e depuis la fiche entreprise" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Objet" }), (0, jsx_runtime_1.jsx)("input", { value: subject, onChange: (event) => setSubject(event.target.value), placeholder: "Commandes - Chantier [Ville]" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "full-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Message" }), (0, jsx_runtime_1.jsx)("textarea", { rows: 7, value: body, onChange: (event) => setBody(event.target.value) })] })] }) }), (0, jsx_runtime_1.jsxs)("section", { className: "panel order-documents", children: [(0, jsx_runtime_1.jsxs)("div", { className: "panel-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Pi\u00E8ces jointes" }), (0, jsx_runtime_1.jsx)("h2", { children: "Documents du chantier" })] }), (0, jsx_runtime_1.jsxs)("span", { className: "muted", children: [selectedDocumentIds.length, " s\u00E9lectionn\u00E9(s)"] })] }), (0, jsx_runtime_1.jsx)("div", { className: "order-category-tabs", role: "tablist", "aria-label": "Cat\u00E9gories de documents", children: visibleCategories.map((category) => {
                                         const count = projectDocuments.filter((document) => document.category === category).length;
                                         return ((0, jsx_runtime_1.jsxs)("button", { type: "button", className: activeCategory === category ? 'active' : '', onClick: () => setActiveCategory(category), children: [category, (0, jsx_runtime_1.jsx)("span", { children: count })] }, category));
                                     }) }), (0, jsx_runtime_1.jsxs)("div", { className: "order-document-list", children: [visibleDocuments.map((document) => ((0, jsx_runtime_1.jsxs)("label", { className: "order-document-row", children: [(0, jsx_runtime_1.jsx)("input", { type: "checkbox", checked: selectedDocumentIds.includes(document.id), onChange: () => toggleDocument(document.id) }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("strong", { children: document.name }), (0, jsx_runtime_1.jsx)("small", { children: document.category })] })] }, document.id))), !visibleDocuments.length && (0, jsx_runtime_1.jsxs)("p", { className: "empty-state", children: ["Aucun document dans l\u2019onglet ", activeCategory, "."] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "order-selection-recap", children: [(0, jsx_runtime_1.jsxs)("div", { className: "order-selection-recap-head", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "R\u00E9capitulatif" }), (0, jsx_runtime_1.jsx)("strong", { children: "Documents s\u00E9lectionn\u00E9s" })] }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedDocuments.length, " pi\u00E8ce", selectedDocuments.length > 1 ? 's' : ''] })] }), selectedDocuments.length ? ((0, jsx_runtime_1.jsx)("ul", { children: selectedDocuments.map((document) => (0, jsx_runtime_1.jsxs)("li", { children: [(0, jsx_runtime_1.jsx)("span", { children: document.name }), (0, jsx_runtime_1.jsx)("small", { children: document.category })] }, document.id)) })) : ((0, jsx_runtime_1.jsx)("p", { children: "Aucun document s\u00E9lectionn\u00E9 pour le moment." }))] }), (0, jsx_runtime_1.jsxs)("div", { className: "order-convention", children: [(0, jsx_runtime_1.jsx)("span", { children: "Convention entreprise" }), (0, jsx_runtime_1.jsx)("strong", { children: artisan?.conventionName || 'Aucune convention enregistrée' })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "panel order-actions", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Fonctionnement local Outlook" }), (0, jsx_runtime_1.jsx)("span", { children: "Tu coches uniquement les documents \u00E0 joindre. La convention de l\u2019entreprise est ajout\u00E9e automatiquement lorsqu\u2019elle existe." })] }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: prepareOutlook, disabled: preparing || !project || !artisan, children: preparing ? 'Préparation…' : 'Créer le brouillon Outlook' })] }), message && (0, jsx_runtime_1.jsx)("p", { className: "order-message", children: message })] }) }))] }));
 }
-
-},
-"src/lib/artisanPlanningPdf": function(module, exports, require) {
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.sanitizePlanningFileName = void 0;
-exports.createArtisanPlanningPdf = createArtisanPlanningPdf;
-const MM = 72 / 25.4;
-const PAGE_WIDTH = 420 * MM;
-const PAGE_HEIGHT = 297 * MM;
-const MARGIN_X = 7 * MM;
-const MARGIN_TOP = 7 * MM;
-const MARGIN_BOTTOM = 6 * MM;
-const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
-const HEADER_HEIGHT = 27 * MM;
-const SECTION_GAP = 4 * MM;
-const INFO_HEIGHT = 15 * MM;
-const TABLE_HEADER_HEIGHT = 9 * MM;
-const ROW_HEIGHT = 12 * MM;
-const FOOTER_GAP = 5 * MM;
-const FOOTER_TOP_PADDING = 3 * MM;
-const OBSERVATION_HEIGHT = 14 * MM;
-const FOOTER_HEIGHT = FOOTER_GAP + FOOTER_TOP_PADDING + OBSERVATION_HEIGHT + 7 * MM;
-const LOGO_WIDTH = 520;
-const LOGO_HEIGHT = 273;
-const LOGO_JPEG_BASE64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCAERAggDASIAAhEBAxEB/8QAHQABAAMBAAMBAQAAAAAAAAAAAAYHCAUDBAkBAv/EAFMQAAEDAwEDCAIKDgcIAwEAAAABAgMEBREGBxIhCBMxQVFhcYEUIhUWIzJCcoKRobEYN1JVYnN1kpSys8HR0zM1NlZ0ldIXJCVDg5PC8DRTVOL/xAAcAQEBAAIDAQEAAAAAAAAAAAAAAQIFBAYHAwj/xAA6EQEAAQIEAwQGCQIHAAAAAAAAAQIDBAURIQYxQRIicYEHE1GCkfAUFWFykqGxwdEWUiMkMlRik7L/2gAMAwEAAhEDEQA/AN/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADw1lXT0FvnrquVsVPBG6WWRy4RjWplVXwRFM5aQ5WVLqTaPbdP1mlGW+gr6r0ZlctbvqzeVUjVzNxE4ruovHhvdeD4XsTbszFNc6TPJt8tyHHZnbu3sJb7VNuNat4jTnPWY15TtGstJgFMbZtvkGynUNustLYmXirqYHVMzXVXMpAze3WdDXZVyo/s973mV69RZp7dydIfDLMrxWZ4iMLhKO1XOu2sRy3nedIXOCG7LtoFLtL2bUmqKemSklke+GopUk5zmJWLhW72Ezw3VRcJwchMjOiuK6Yqp5S4+Kwt3CXq8PfjSumZiY9kwAAyccAAAHq0tfBV1dXTRr7pSyJG9PFqKi/T9B7QAHiqqmKjopaqd27HExXuXuRBS1DKqhhqo0w2ViPRF7FTIHlAAAHPfd6Rmoo7O53u74llRc8Ono8cZXyOgAAOZfbt7C2la5YOeRHtarEdu9K46QOmDj2HUVLfmS+jwzRPixvtkxjjnGFRePQdgACNXbWtstlQ6miY+rmYuHJGqI1q9iuXr8D0KbaJSPlRtXb5oWL8Nj0fjy4ATQHhpaunrqRlTSTNliemWub1nmAA5d21BbLM1PTJsyKmWwxpvPXy6k8SNv2jRI/EdqkVva6VEX6lAnAI1bNb2ivlbDPv0cjuCc9jdX5SfvwSVFRUygAA59qvFLdoZVgXdkiesckSrxaqKqfMuOCgdAA5d8vUNioGVU0MkqPfzaNZjOcKvX4AdQHH0/fm3+mnmZSugSJ6Mw528q8M5OwAByb1qG32ONvpLnPmemWQx8XKnb3J3ka/2je6/wBULufjuP1ATsHKs2obde419FkVsrUy6GTg5O/vTvQ6oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUdypdae1vYy6xU0u5W36T0RERcKkDfWlXzTdZ8swy1z2vR7Hqx6Llrm8FavUqeBbnKR1p7btuVbTU8u/QWVvsdBheCvauZXeb8t8GIVIsUjYWyujekb1VGvVFw5UxlEXrxlPnQ6dmV/11+ZjlGz9QcCZP9WZRaprjSu5358+UeVOnnq+j+yzXEOt9jVp1TPNG2ZafcrlVcJHNH6smexMorvBUMFbTNYSa72r3rU6ucsFTOraZq/BgZ6safmoi+KqdHTW125aH2K6w0hTJK72ZSJtNI1eFOrl3J1+VFhE70IJDG+oe1lPG6RXJlrWNVVVMZ4IncmT643GTfs26fj48vnxcDhThe3lGZY297ZiKPsonvfrpT7rRnJH1r7Ga7uOiauXFPdYvSaZFXgk8aesifGZ+obKPlzp6+1umdV23UVtdiqoKhlTFj4StXO74KmUXuU+mthvNFqHTFvvttkSSkrqdlTE7OfVc1FTPfxx5Gzya/27c2p5x+joPpTyf6PjqMfRHduxpP3qf5jT4S6IANy8sAD1rhUJS2mqqVXHNxOf8yAVzaL6tLr+eqe7EFXO6OTsRFd6q+S4+ks8oprHujV+6qtbjeVOrJaumb2yv0slRUyIklM1WTuX8FM73mnH5wOXr+7czRxWmJ3rTe6S4+5ReCea/UdjSFR6To6jVVy5jViX5Kqn1YKzuldNd7vU3BzXYcu9j7hicET6vNSb7PKjfs9XSqvGObeRO5yfxRQJieKpqIqSjlqZ3bscbVe5exEPKQrX915ukitETvWl90lx9yi8E81+oCG1F2qp9Quu6PVs6y8638HHQnhjCFuWyviudpgrofeytzj7letPJckBptN87s4lrubzVOd6Szhx3G8MeaZX5j2NAXbmquW0Su9SXMkOfuk6U804+SgWCRrXX9kJPxsf6xJSNa6/sfJ+Nj/WA5Gzj39x8I//ACJTqGqlotL1tTCqtkbEu6qdSrwz9JFtnHv7j4R/+RM7jRR3G1VFDKqo2ZisynV3gVVpqzxXq+JSzyuZE1iyO3V9Z2FRMJ85K7noCkkp960zPhmT4Ezlcx3n0oQ6qo7tp65osiS00rF9SZnvXd6L1+B3bdr+4Quay4wR1MfW9ibj/wCC/QBN7NaYLLaWUUCq7HrPevS9y9Knh1FeG2WxyVSIjpnLuRNXrcvb3JxXyPeoa2muNBHWUkm/FImUXo8l7yEbRZnrU0FPx3Ea9/iuUQCN2+33HUd5c1jlkleu/LNIvBqdq/uQmkGz21NgRKirq5JOtzVRqfNhTy6Bp449MOqGtTnJpXby/F4In1/OSoCrtQ6QqLPCtXTSLUUie+VUw6Px7U7zraFv0r5VstXIrk3VdA5y8Ux0t/enmTiaKOenfDK3eY9qtcnai8FKetTnUerKTm3KvN1TWZTrTe3fqAuQpuK5VVq1JNWUb917ZnoqL0PTeXKL3FydRS/o/peplpN/c56qWPexnGXqmQLWsl6pb3bkqadd16cJIlXixf4dinD2h/2dpv8AEp+q4h7XXbSeoV4c3KzpT4EzP3ov0Eg1Vd6W9aLpaqmdhUqUSSNeljtx3BQPb2df1TW/j0/VQmZDNnX9U1v49P1UJmBTt9nkr9WVbpH4VZ1ibvdDURd1Cc+0OyLRczmoSXH9Nv8AHPbjo8iP6t0zWU90nuVJA6ammdzjkYmVjcvTlOzryc+26uvVtY2JtQlRE3gkc6b2O7PSgE101pRlkllqaiRk9S5Vax7UwjWfxXrJIcTT+paW/Qua1nM1MaZfCq54dqL1odsAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ/ajrGPQeya9alVzUnp4FZStX4c7/VjT85UXwRSYGRuV9rX0i82jQNJNmOmb7I1qNX/mORWxNXwbvu+U04mOv+os1V9eni7Hwlk/1tmlnDTGtOutX3Y3n48vNmNzpp51e9XzTSOyq9LpHKv0qqr9JqvaXsYSy8jqzMhpkW8aeT2Rq1anF3PY9JT5OWr4RFT8nfRPtz2429amHft9p/4lU5TKKrFTm2r4vVq47GqbV2naht2ldkOoL1dImT08VHIzmH9E7npuNjX4znInmppMuwlNdi5cucpjT99XrPG/Ed7DZrgsFg96qaoqmI6zPdinziZ+MPmhPE2enfC7ocmC+eR1otNQa1uOpbnTJJS2OJ1LG17ctfNM1Ux37se/+ehRKJhqJ2Jg2byQL7bJ9mV205BBHDX0Ve6qnVvTO2ZE3Xr3puKzwahx8rimu9FNfjHjDd+kK7fw2VXL+H5zHYqn/jVO/wDHvMu7SdIS6E2qXrTDmuSGlqFWmcvwoHetGv5qoniimpOSTrVLts7rdGVc2amzS85TtVeK08qqvD4r99PlNOJyv9FLLQWfX1JF60C+x1aqJ8Byq6Jy+Dt5ufw0KO2Ja19ou2uz3aaXm6Gof6DW8eHNSqiby/FduO+Sp9aP8ljdOn7T/H7NfiYjizhX1kb3YjX36Of4o10+9D6LAJ0A7S/PAcHWVRzGjqtM4WTdiTzcmfoyd4hu0SdW2mjpkz7pKr18Gp//AEBy9HWqO52W8RS4xKjYmr9yqZci+S4I22prrdHW27eWNJfcp2L2tX/3yUsHQUPN6VWRW4WWZzs9yYT9x6GptMPrdWUk1M3EdY7dmVPgq1Mq7zanzoB6lpsat2c3KtkZ7rVRK5ncxi5T51RV+Y8ez2o3L7U06rhJYd5E72r/AAcpYD6aNbc6jY1Gx83zaNTqTGMFV6UldR6zo0cipl6wu80VPrwBa880dPTSTzORscbVc5y9SJxUpu4VVTer3PVJHJJJM5VbG1FcqNToTCdiE219dVgt0Vrid69R68mOpidXmv1KeDZ/asMnu8reLvcos9nwl+fCeSgR9lfq6OFsMb7k2NrUa1qRLhEThj3pymLWW2uinWOSCeNySM5xqtXgvf1F3EU11avTLIlfG3MtKuVx1sXp+bgvzgSC2V8VztMFdD72Vucfcr1p5LlDi66/sfJ+Nj/WOHoG7LFVy2iZy7suZIs9Tk6U804+Snc10irpCTCKvusfQmfhAcjZx7+5eEf/AJE8IHs5RUfccoqcI+lPjExulLUVtonpaWpWmlkarWyInR/70AfsdRb7kyaKOSGpbG/m5G8HIi9ioQXW1htttp4K2hY2B0km46Jq+qvDOUTq6PpOFJT33Tta71amkf0b8ed16ePQqH8ql81DWt3m1NbL71FVPVanj0IgEv2dzPdbK2BV9RkrXNTsVW8fqQ/vaDQPmtdPXxtz6O5Wvx1Ndjj86J852dN2VLJZW073NfO9d+Vzeje7E7kTgdWWKOeB8MzGvjeitc1yZRUXqAgGh79BSK+1VkjY2SP34XuXCby8Favj1FhFZ3zRVdRTOmtkbqqlVcoxvF7O5U6070OMy6XyjZ6MyuroUThze85Md2F6ALL1Hfqey2x676OqpGqkMSLxz90vchANJUElw1XTuwqsgdz8jvDo+dcfSeGgsN6vVTvsglVHL61RUZRvzrxXyLLsVjprHb+YhXfkfxllVOL1/cnYgHUKeo/7bwf49P2hcJT1Gi+3eDgv/wA9P2gFm3yx0t8t6wTepK3KxSonFi/vTtQqi4UFXa66Siq2Kx7Vzw965OpydqF1nKvtipb5b+Zm9SVvGKZE4sX96dqAcHZ1/VNb+PT9VCZkV0VQVVsguFJWRKyRs6eDk3U4ovWhKgPVkuNFFcorfJUsbUytVzI1XiqJ/wC/Qpy9RWK1VtqqamaGOGaONz0qGpuqiomePaniRLUum7zBdprhHz1bG92+krOL2diKidnUqfQceSp1BcI0o5ZbjUtyic0qOXPin8QPZ0fK+PWVHuZ9fea5E7Fav8PoLaIbo/S9Rb6hbncWIybd3Yos5VqL0qvf1YJkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB69fW01ttVTca2VIqamidNLI7oaxqKrl+ZFPmZrPU9VrTaBd9UVeUfcKl0zWKvvI+hjPJiNTyNi8qnWvtd2Pt07Sy7tbfpfR1RF4pTtw6VfP1WfLUx5ojS9TrXaJaNLUu8jrhUtie9qZ5uPpkf5MRy+R1zOL03LlNinp+s/P5vc/RhltGDwN7N8RtFWsRPspp3qnzn/y2JyV9Fe13Y+uoaqLdrb9L6SiqnFKduWxJ5+s/wCWhw+VWur77b7NpDTOm7zcaVXrX1s1FSPlZlMtiYrmpjPF7lT4pomhoqa22umt9FEkVNTRNhijb0MY1ERqJ4IiHnz4m2nBxOHjDxOnz+7zWjieunO6s5rtxXV2pmImdo20p/DGmng+Yd20bq6w0CV180veLbSq9I+fq6N8TN5ehN5yYyuFJnsB1r7SduNrqKibm7fcV9jqvK4ajZFTccvxXoxfDJuDaRpGHXWy286XkRvOVdOvMPd8CZvrRu7sORvlk+ak0M1PUSU87HQzRuVj2LwVjkXCp4oqL8x1/FYacDdpqpnXr8HtfDufW+L8vxGHxFEUz/pmI32qjad+uuvnD6aa50vTa12dXjS9XhGV9M6Jr1+A/pY7ycjV8j5n1tFU2+41Nur4XQ1NPI+CaNeCse1Va5PJUU+iexjWvt92MWe9zSb9ayP0St48Unj9Vyr8bg75RlblS6K9re2T2fpod2iv0XpOUTCJOzDZU8/Ud8pTnZtbi7apxFHzEuoejbG3MuzHEZLidpmZmPvU7Tp4xv7rT2wnW3t52JWm4Ty79fSN9Arc9Kyxoiby/Gbuu+UWSYq5JutPYXadV6Rqpd2lvcW9CirwSoiRVT85m8nyUNqmyy+/66xEzzjaXRuNsn+qs2u2qY0oq71PhPTynWPIPxURyYVEXxP0HNdTfiIiJhERE7j9B+KqIiqq4TvA/T+dxmc7jc9uDM9s22LNyopqmWsxpupVLRHl3qNa1y7k3nIq5X7l3caaGg/FY1y5c1F8UP4lmgpYecmljhjRcbz3I1PpPIVLyjkRdhNWioi/73TdP4xALO9lrX98qT/vN/ieaGppqpqrTzxTInBebejvqMBaV0JqTW09VDpm0trn0rWvmTnI491HKqJ75Uz0Kee66c1xs6utPNcKK5WGpcqrBURSbiOVOndexcKqcOGTLRNW+kYxFyjGovaiH9cF6So9hG0yu13pmqt18kbJd7YrEfOiI30iJ2d16onwkVFRcdy9Zbhirl2zUWn7yqpaL1b61UVUVtNUMeqKnSioi5ToOoYL0Vw28WNyJh3s5GmU6f6c3oWY0DCKmFPxEREwiIiH6Uptr20SaMf7WdMujffJGI+aociObRsXo4db16UReCJxXOUQgt25Xm0WeDnrtdKOgjXofVTNiRfzlQ51DrjRlynSC36rs1TKvBI4qyNXL4JniYmtOmtd7S73NU0NFcL5Vb3u1ZUSZaxV6nSPXCeCL5HXvOw/aXZbc6uqtMrUwsTed6HKyoc1O3dau98yKZaJq3CfioiqiqiKqdBjDZntr1Doe4w0N1qai6WFVRklNM5XyU6fdRKvFMfcLwXuU2Pb6+jutqp7lb6hlRS1MbZYpWLlHtVMoqEmNFeyfjnNYxXOcjWomVVVwiIcfVWp7Vo/SdXqC8Sqympm53W8XSOXg1jU63KvBDG2sNo2t9qOom0DVqkp55Nyls1CrlavYionGR3aq8OxEQRGo1/Ua/0NS1CwVGsLHHKi4Vjq6PKePE61BcLVdaf0m11tHWxZ/paaRsjfnaqmQqPk5bS6m3tqH0VrpHKmUp56tEencu61URfMilxsWvtleoYp6mGvsVXn3Kqp5Pc5e5Hty1/xV80Lomrep/EssUELpppGRxsTLnvVERE7VVSN7Pa3VVx2d26u1lTQU92mj35GRNVq7q+9V7fgvVOKtTgir1dCejteRF2F6qRURU9jZeC+BiqQ0mpdO19zS3UN9ttVWbqv9HgqWSP3Uxld1FVcJlDqGPOTWjU23rhqJ/w6foT8JhsJzkYxXOVEREyqr1FmNB46iop6SmfUVU8cELEy+SVyNa1O1VXghw4deaIqa30SDV1jknzhI210aqq9iceJj3aJrzUG07Xj6aCSplt7qn0e22yNfVXLt1qq3oc93TlejOEwiHv3Pk/7S7ZY1uL7RS1aNbvPpaSoSWZifFwiOXuaqjRNW00VFTKLlD0rnebTZoWS3W5UtE2Rd1izyIzfXsTPSvgUpya4Ncpp6rqbvVy+1z+joaerRVk5xHes6NV4tjTimOhV6MYXPe1/RXKHW0lbLXrb4KllOymubmyrHAxiTc7CrolRzVc90Tulu9jpXcwFWrSVdLX0cdXRVMNTTyJvMmhej2PTtRU4KeYgezCkuEVruFbUwTU9NVyQvijmRUdJI2BjZpsKiLiSRHOyqJve+wm8TwgAAAAAAAAAAAAAAAAAAAAAAAAAAAAQrazrNugtkN61G16Nqo4VipEVffTv9WP5lXPgimNdcUUzVVyhyMJhbmLv0Ye1GtVcxEeMzoxpyitaprLblcG003OUFoT2NpsLlFVi5lcni9VTPY1CzOSBornbheNfVkOWQp7G0TnJ8JcOlcngm43zcZfjZUVVU2KNr6iomejWp0uke5cJ5qq/SfSjZrpCHQeyuzaYj3VlpadPSHp8OZ3rSO83Kvlg63ltE4nEzeq6b+fR7rx3ireR5DayrDzvXEU+7TpNU+c6a+MoDynNcP0nsZktlDUuhuN7l9DidG5WvbEnrSuRU6PVw35aGM9MU+o9V60tem7fdrj6RcallO1fSpPURy+s7p6Gty7yJ/ylNa+27bhV0VNLv0Fkb7Hw4XgsiLmV35/q/IQmfJE0V6frC6a5q4sw22P0OkVU6ZpEy9yfFZhP+oY4iqcZjOxHLl5RzfbJbNHDHC84u7THrKo7W/8AdVtRHltrHi1za7dTWmyUlqo0clPSwsgj3nby7rWo1MqvSuE6TC3KY0V7VNt1TcKaLcob4z0+JUTgkucTN/Ow75ZvQrva9smt+1nTNFbqm5OtlVRVHPw1jIUlVqK3dezdVU4Lw6+lqG5zDCzfs9miN45PLeCuIacozSL+Iq/w64mK53nnvE7eydPLVnnkj619jNdXHRNXLiC7R+k0qKvBJ409ZE+NHx/6Zd/KN0UusNh1fLTQc5cLQvslT4TLlRiLzjU8WK7zRCC6e5JsumtWW3UNt2jTNq6CpZUxZtjcKrVzhfdOhUyi9yqaTexkkSxvajmuTCtVMoqdh8cHhrn0eqxfjT2fP2NnxRnmB+u7Wb5Tc7U7TVGlUb07dYjaqnbb7fa+W1nu1bYtQUN7tkqsq6KdlTA9Pumqjk8lxjwU+mml9QUWqtGWzUducjqa4UzKhmFzu7yZVq96LlF70M813I3tFRdKmej1xV0tPJK98VP6A1/NNVyqjN7fTOEwmcdRc+yzQE+zXQbdLPv8l4p4p3ywSSQJCsTXrlWYRy5Te3l+UfHK8Nfw9dUXI7s/bHNsvSBn2T53hrV3B3dbtE8uzVHdnnvMabTEdfamwAN28pCrdvOt/ajsvmo6SbcuV23qSDC8WMVPdH+TVwne5C0lXCZMPbZ9ae3XanWVNLNv26hzRUfHLVa1V3np8Z2V8EaWISUfl0bdItl0GuHMxbpq91AiY4phuUfnsVyOb4tNc7EtcLrXZfTOq5t+527FHV5Xi5Wp6knym4XxRxTlXtc2c1Gw3/Z0yxX1sTaFII5ljh4TN9ZJff8A/wBnrL4qRHYhrf2mbUaZKubcttzxR1eV9ViqvucnyXLjPY5xZ3G2SpuUb9omr/xdN+0QtkqblG/aJq/8XTftEJCqv5Ml2tdqvmo33S5UdE2SCBGLUzNiRyo5+cbypk7PKN17pS86TotM2a5Utyrm1jamR9K9JGQNaxyYVycN5d7oRehFz1Fa7MNn8O0LTmrLfGyNLpSwQVFBK/qk3n5Yv4L0TC9nBeohdphtdLq6lptVQVkVviqObro4F3Jo2ouHYyi4VF6U7lwZabovPkr2msW9agvqsc2kSGOjRypwfJvb6ongmPzkNNnI0xabBZdKUVDpmnghtaRo+DmFy17XJnf3vhKuc5Xip1zGVYM0X9vax/l2P9ubzMGaL+3tY/y5H+3N5llIeCsqY6K3T1k2ebhjdK7HY1FVfqMEUMVw2i7VYIpplSrvlwRXyrx3Ee7Kr4NbnCfgobyu1GtxsNbb0XC1FPJDlereaqfvMH6HuiaN2rWa5XNjo2W6uRtUipxY1FWN/DuRVXyFJLdVhsVr01p6lstmpWU1HTMRkbG9faqr1uXpVetTpH8QyxT07JoJGyRvajmPYuUciplFRetFQ/sxVlrlK6FoLPdqHWNrgbAlxldBWRsbhqzIm82TxciORe1URelVJnyYtQT3HZ1cLFO9z/YuqTmlVfexyorkb5OR/wA5yOVJqOk9iLNpSKRr6p0618rUXjGxrXMbn4yudj4qnscle2Tw6V1Bd3sVIqqqjgjVfhc2xVVU85MeRl0Tq4fKl1BUSX6yaXjeqU8ULq+RqLwc9zlYzPgjX/nEm5NOjKOh0VLrOpga+vuEj4oJHJlY4GLu4b2bzkVV7kaQrlR2uaDaHZ7wrF5ipoFgR/VvxyKqp80iKWnydb7SXTYpSWyJ7fSbXLJTTR54pl6vY7HYqO+hewdDqmurdd6W0NT0s2prl6G2qe5kOInyK5WpleDUVcJlOPeQ2t247G7jTpBcLxHVRNe2RI57dM9qOauWuwrOlFRFRT19rOx+8bStS0VdFqSnoKSjp1ijp307pF3nOy52UcnThqeRRG0zY5WbNbFRXKpv0FwSqqPR0jjp3Rq1d1XZyrlz0EiIGtNJa301rigqKzTNetZDTypDK5YXx7rlajsYciZ4Khy9rv2jNVfk2X6it+Sv/Ye//lFv7FpZG137RmqvybL9Q6qzlybPt3r+Tp/1mGvaqFKmimp1crUkY5iqnSmUwZC5Nn271/J0/wCsw2EKuaQ+flO+67P9pUUktM1LjZa5HLDMi7rnMd19zk4oqdSoqGotM8o7QV5bHDeHVNiqXcFSqZvw57pG9Xe5EJZrjZXo/X6JLeqF0dc1u6yvpXc3MidirhUcnc5F7sGdNo2wC86KstRf7Vc2Xa106b8yOZzc8LPulRMo5E61TC9eC7SNdUtTS1lHHV0VRFUU8rd+OWJyOY9F60VOCoeYyryZ9YXCk1rPoyaeSS31kD6iCJVykMrMKqt7Ec3OU7URe01USY0UABAAAAAAAAAAAAAAAAAAAAAAAAAAAAyFyvda+majtOg6SXMVEz0+sai/816K2Nq+DN53y0NelMam5M2hNW6vuOpbxddRPra+ZZpdyqYjUXoRrU5vg1EREROxDg5hau3rXq7XXn4O28F5jgMtzGMZj5nSiJ7Oka96dvyjXz0YbtF1rbFfqO822RkdZRzNnge+NsiNe1ctXdciouF48ULLXlK7Z1bj23R/5fT/AOg0H9iJsy++Wpf0uP8Alj7ETZl98tS/pcf8s01vLcZbjSidPCXqeM464XxtUVYq125jl2rcTp8WJ5ZZJ55J5nukkkcr3vcuVc5Vyqr3qqk90jtq2iaF00ywaYu9NR0DZHy82tFFIqvcuVVXOaqqv7kQ039iJsy++Wpf0uP+WPsRNmX3y1L+lx/yzGjK8XbntUTpPi+uL9IPDeMt+qxNE1089JoiY+EqC+yb2y/3mpf8ug/0j7JvbL/eal/y6D/SX79iJsy++Wpf0uP+WPsRNmX3y1L+lx/yz7fQ8w/vn8Utb/VHBn+1p/6qVBfZN7Zf7zUv+XQf6TRHJw2uXjaPZLvbtVVkNReqCVsrZGRNi5yB6YT1Woieq5HIq97T1PsRNmX3y1L+lx/yyUaA2BaQ2cawTUenrnfVqeZfTviqahj45GOxlHIjEXgqIqcelDkYXD423diq5VrHXdpOIs64VxuAuWcFZ7F3nTMW4p3jprHSeX5rVABu3k4AAKw2664XR2y+eCkm3LndM0dNhfWYip7pIng1fnc0obYdstoNoFzuNZfo5/YiiY2JEhkWNZJncURHJ1NamV+M00RrvZDp3aHeqe5X64XdjqeHmYoaaZrI2oq5VcK1eKrjK56kJBozRtm0JpWOwWNs3o7ZHSukncjpJHuXKucqImV6E6OhELrsiCfY37Mv/wAdz/TnlJbcdllBs+ulurLCyf2IrWOiVJpFkWOZvFU3l6nNVFT4rjZBwNZaOs+utKS2C9tm9He9kjZIXI2SNzVyjmqqLhelOjoVREmiJ7DtcLrPZhAyrm37pbMUdVleL8J6ki/Gb9KOPR5Rv2iav/F037RDs6E2Q6d2eXuouVhuF3c6oi5mWGpma+N6Zyi4RqcUXOF717SQay0fatc6Vk0/eZKplJJIyVVpnox+WrlOKovX3DqqgeSr/X+pv8PT/rvPzlH7OForimv7RB/u9Q5sdxYxPeSdDZfB3Bq9+F61Ln0Hsq01s6q66osM1wkfWMYyX0uZsiIjVVUxhqY98pLbnbaK8WeqtVyp2VFJVROhmienBzVTCoNd0Z55OO0tVxs9vVR0Ir7XI9erpdDnu4ub3bydSGkSutObDtnOmquCtpbNJVVkD2yRVVbO+V7HIuUVEyjUXPcWKJV8+7Tdo7DtNpL5NC+eOhuaVLomKiOejJVcqIq8EXgaD+yqsX90bp/34jtTcmbQE9TJO+vvyOke564qWYyq5X4Hefx9jDs+++F//SY/9BdYRI9mm2GzbSbhXUFJbqm31VLG2Xmqh7Xc4xVwrkVvYuEXxQqXb7skrqa91OutOUb6ijqV5y4U8Lcuhk65UROlrul3YuV6F4WnpHYZpTRWrKfUNmuV7SqgRzd2adjmPa5MK1yIxMp1+KIWcTXTkrFuz7bpqrQ1tjtL4obxaY/6KnqHq18KdjJEz6vcqKidWCZXnlT3apt74bFpanoahyKiT1VQs+53oxGtRV8VLb1LsP2c6nrH1lTZVoap65fPbpFgV69qtT1VXvwcSh5Nezekqmyztu1c1FzzVRV4YvjuI1fpLrCM12HT+r9q2vZGQvmr6+oeklXXz8WQt6N969CIidDU6cIiIba0npm3aP0dQ6dtbV9HpI93fd76Ry8XPd3uVVVfE9qzWKzadtbLdY7ZTW+lZ0RU8aMRV7Vx0r3rxOgSZ1VC9qGgafaHoOazrIyCtidz9FUOTKRyoi4RfwXIqtXxz1GQbVd9a7I9fS81HLbblD7nUUtQ3ejnZnoVOh7V6Uci96KbyOHqXR+mdX0LaTUlmpbhGzix0jcPj+K9MOb5KIlFIUfKrpPY9vsho6p9LROPo9U1Y3L3byZT6Srdp21+7bSY6akqbbS263UsqzRRMcsj1cqK3LnrjqVeCInmXzPyZtnMtQskct7gaq55qOrRWp4K5qr9JJ9N7GdnWmJ46mh09FUVUfFtRXOWoei9qb3BF8EQusCHcmWzXW2bO7lVXGgnpYq2tSamWZu6srEja3eRF44yi4XrJztd+0Zqr8my/UTXGDmaisVHqbStfYLg+ZlLXQugldC5GvRq9OFVFwvkYqyhybPt3r+Tp/1mGvqiV0NJLMyGSZzGK5Io8bz1RM7qZVEyvRxUrzROxXSeg9ULfrPVXWWp5l8G7VTNezdcqKvBGpx9VCxyzJDIruUJre37U6y7VtG5KDK0z7DOqxpA1qrhM4ykqccuVOOcYwiY6Gv+UX7adDVenrNp+agdXRrDUVFTM16tYvvmsRqdKpwyvQirwL21jsq0Rrif0q92hErcI302mesMyonUrk998pFIpQcmzZtR1rZ547rXsaueZqav1F8dxGqvzjWEVZyadK19ftEl1Y6JzLfboZIWyqnCSaRMbqduG5VezKdprI9S22y32e1w221UUFHSQt3Y4IGIxjU7kQ9sTOqgAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/9k=';
-const cp1252Extra = {
-    '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87,
-    'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a, '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e, '‘': 0x91,
-    '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97, '˜': 0x98,
-    '™': 0x99, 'š': 0x9a, '›': 0x9b, 'œ': 0x9c, 'ž': 0x9e, 'Ÿ': 0x9f,
-};
-const toCp1252Byte = (character) => {
-    const extra = cp1252Extra[character];
-    if (extra !== undefined)
-        return extra;
-    const code = character.codePointAt(0) ?? 63;
-    if (code >= 32 && code <= 255)
-        return code;
-    const simplified = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-    const simplifiedCode = simplified.codePointAt(0);
-    return simplifiedCode && simplifiedCode >= 32 && simplifiedCode <= 126 ? simplifiedCode : 63;
-};
-const pdfHex = (value) => `<${Array.from(value).map((character) => toCp1252Byte(character).toString(16).padStart(2, '0')).join('')}>`;
-const base64ToHex = (value) => {
-    const binary = atob(value);
-    let output = '';
-    for (let index = 0; index < binary.length; index += 1) {
-        output += binary.charCodeAt(index).toString(16).padStart(2, '0');
-    }
-    return output;
-};
-const number = (value) => Number(value.toFixed(2)).toString();
-const color = (hex) => {
-    const normalized = hex.replace('#', '');
-    return [0, 2, 4].map((offset) => parseInt(normalized.slice(offset, offset + 2), 16) / 255);
-};
-const COLORS = {
-    red: color('#c51a2e'),
-    redDark: color('#9f1525'),
-    dark: color('#272a2f'),
-    text: color('#2f3338'),
-    muted: color('#777c84'),
-    border: color('#d7d9dd'),
-    borderStrong: color('#b9bdc3'),
-    soft: color('#f8f9fa'),
-    cream: color('#fffdfa'),
-    meta: color('#f5f5f2'),
-    white: [1, 1, 1],
-};
-const estimateTextWidth = (value, fontSize, bold = false) => {
-    const factor = bold ? 1.04 : 1;
-    return Array.from(value).reduce((width, character) => {
-        if (character === ' ')
-            return width + fontSize * 0.28;
-        if ("ilI.,'!:;|".includes(character))
-            return width + fontSize * 0.25;
-        if ('MW@%&'.includes(character))
-            return width + fontSize * 0.82;
-        if (/[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ]/.test(character))
-            return width + fontSize * 0.62 * factor;
-        if (/[0-9]/.test(character))
-            return width + fontSize * 0.56 * factor;
-        return width + fontSize * 0.5 * factor;
-    }, 0);
-};
-const truncateText = (value, maxWidth, fontSize, bold = false) => {
-    const cleaned = value.replace(/\s+/g, ' ').trim() || '—';
-    if (estimateTextWidth(cleaned, fontSize, bold) <= maxWidth)
-        return cleaned;
-    let output = cleaned;
-    while (output.length > 1 && estimateTextWidth(`${output}…`, fontSize, bold) > maxWidth)
-        output = output.slice(0, -1);
-    return `${output.trimEnd()}…`;
-};
-const wrapText = (value, maxWidth, fontSize, bold = false, maxLines = 2) => {
-    const words = value.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
-    if (!words.length)
-        return ['—'];
-    const lines = [];
-    let current = '';
-    for (const word of words) {
-        const candidate = current ? `${current} ${word}` : word;
-        if (!current || estimateTextWidth(candidate, fontSize, bold) <= maxWidth) {
-            current = candidate;
-            continue;
-        }
-        lines.push(current);
-        current = word;
-        if (lines.length === maxLines - 1)
-            break;
-    }
-    if (current && lines.length < maxLines)
-        lines.push(current);
-    const consumed = lines.join(' ').split(' ').length;
-    if (consumed < words.length)
-        lines[lines.length - 1] = truncateText(`${lines[lines.length - 1]} ${words.slice(consumed).join(' ')}`, maxWidth, fontSize, bold);
-    return lines.slice(0, maxLines);
-};
-const formatDate = (value) => {
-    const parsed = new Date(`${value}T12:00:00`);
-    return Number.isNaN(parsed.getTime())
-        ? value
-        : new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(parsed);
-};
-const formatPdfIsoWeek = (value) => {
-    const parsed = new Date(`${value}T12:00:00`);
-    if (Number.isNaN(parsed.getTime()))
-        return value || '—';
-    const target = new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
-    const dayNumber = target.getUTCDay() || 7;
-    target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
-    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
-    const week = Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-    return `S ${week}`;
-};
-const statusLabels = {
-    todo: 'À planifier',
-    scheduled: 'Planifiée',
-    in_progress: 'En cours',
-    done: 'Terminée',
-    blocked: 'Bloquée',
-};
-function createArtisanPlanningPdf({ artisan, rows }) {
-    const availableRowsHeight = PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - HEADER_HEIGHT - SECTION_GAP - INFO_HEIGHT - SECTION_GAP - TABLE_HEADER_HEIGHT - FOOTER_HEIGHT;
-    const rowsPerPage = Math.max(1, Math.floor(availableRowsHeight / ROW_HEIGHT));
-    const chunks = rows.length
-        ? Array.from({ length: Math.ceil(rows.length / rowsPerPage) }, (_, index) => rows.slice(index * rowsPerPage, (index + 1) * rowsPerPage))
-        : [[]];
-    const pages = chunks.map(() => ({ commands: [] }));
-    const fixedWidths = [28, 35, 42, 58, 38, 24].map((value) => value * MM);
-    const columns = [
-        { label: 'SEMAINE', width: fixedWidths[0] },
-        { label: 'CHANTIER', width: fixedWidths[1] },
-        { label: 'CLIENT', width: fixedWidths[2] },
-        { label: 'ADRESSE / VILLE', width: fixedWidths[3] },
-        { label: 'ÉTAPE', width: fixedWidths[4] },
-        { label: 'STATUT', width: fixedWidths[5] },
-        { label: 'NOTE', width: CONTENT_WIDTH - fixedWidths.reduce((sum, value) => sum + value, 0) },
-    ];
-    const addCommand = (page, command) => page.commands.push(command);
-    const fillRect = (page, x, yTop, width, height, rgb) => {
-        addCommand(page, `${rgb.map(number).join(' ')} rg ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re f`);
-    };
-    const strokeRect = (page, x, yTop, width, height, rgb, lineWidth = .6) => {
-        addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re S`);
-    };
-    const drawLine = (page, x1, yTop1, x2, yTop2, rgb, lineWidth = .6) => {
-        addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x1)} ${number(PAGE_HEIGHT - yTop1)} m ${number(x2)} ${number(PAGE_HEIGHT - yTop2)} l S`);
-    };
-    const drawText = (page, value, x, yTop, fontSize, bold = false, rgb = COLORS.text) => {
-        addCommand(page, `BT /${bold ? 'F2' : 'F1'} ${number(fontSize)} Tf ${rgb.map(number).join(' ')} rg 1 0 0 1 ${number(x)} ${number(PAGE_HEIGHT - yTop - fontSize)} Tm ${pdfHex(value)} Tj ET`);
-    };
-    const drawCenteredText = (page, value, x, width, yTop, fontSize, bold = false, rgb = COLORS.text) => {
-        drawText(page, value, x + Math.max(0, (width - estimateTextWidth(value, fontSize, bold)) / 2), yTop, fontSize, bold, rgb);
-    };
-    const drawWrappedText = (page, value, x, yTop, maxWidth, fontSize, bold = false, rgb = COLORS.text, maxLines = 2, lineHeight = fontSize * 1.18) => {
-        wrapText(value, maxWidth, fontSize, bold, maxLines).forEach((line, index) => drawText(page, line, x, yTop + index * lineHeight, fontSize, bold, rgb));
-    };
-    const drawImage = (page, x, yTop, width, height) => {
-        addCommand(page, `q ${number(width)} 0 0 ${number(height)} ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} cm /Im1 Do Q`);
-    };
-    pages.forEach((page, pageIndex) => {
-        fillRect(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, COLORS.white);
-        let cursorY = MARGIN_TOP;
-        const brandWidth = 64 * MM;
-        const metaWidth = 54 * MM;
-        const titleWidth = CONTENT_WIDTH - brandWidth - metaWidth;
-        fillRect(page, MARGIN_X, cursorY, brandWidth, HEADER_HEIGHT, COLORS.cream);
-        fillRect(page, MARGIN_X + brandWidth, cursorY, titleWidth, HEADER_HEIGHT, COLORS.white);
-        fillRect(page, MARGIN_X + brandWidth + titleWidth, cursorY, metaWidth, HEADER_HEIGHT, COLORS.meta);
-        strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, HEADER_HEIGHT, COLORS.border, .7);
-        drawLine(page, MARGIN_X + brandWidth, cursorY, MARGIN_X + brandWidth, cursorY + HEADER_HEIGHT, COLORS.border, .55);
-        drawLine(page, MARGIN_X + brandWidth + titleWidth, cursorY, MARGIN_X + brandWidth + titleWidth, cursorY + HEADER_HEIGHT, COLORS.border, .55);
-        const logoBoxWidth = 58 * MM;
-        const logoBoxHeight = 21 * MM;
-        const logoRatio = LOGO_WIDTH / LOGO_HEIGHT;
-        const renderedLogoHeight = logoBoxHeight;
-        const renderedLogoWidth = Math.min(logoBoxWidth, renderedLogoHeight * logoRatio);
-        drawImage(page, MARGIN_X + (brandWidth - renderedLogoWidth) / 2, cursorY + (HEADER_HEIGHT - renderedLogoHeight) / 2, renderedLogoWidth, renderedLogoHeight);
-        const titleX = MARGIN_X + brandWidth + 5 * MM;
-        drawText(page, "CONDUCT'HOME · PLANNING ENTREPRISE", titleX, cursorY + 6 * MM, 5, true, COLORS.redDark);
-        drawText(page, truncateText(`Planning prévisionnel — ${artisan.company || 'Entreprise'}`, titleWidth - 10 * MM, 17, true), titleX, cursorY + 10.4 * MM, 17, true, color('#25282d'));
-        drawText(page, 'Prochaines interventions programmées sur les chantiers Maisons ARLOGIS.', titleX, cursorY + 20.2 * MM, 7, false, color('#6a6e75'));
-        const metaX = MARGIN_X + brandWidth + titleWidth;
-        drawCenteredText(page, "DATE D'ÉDITION", metaX, metaWidth, cursorY + 6.2 * MM, 5, true, color('#858990'));
-        const editionDate = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
-        drawCenteredText(page, editionDate, metaX, metaWidth, cursorY + 11 * MM, 8, true, color('#2c2f34'));
-        drawCenteredText(page, "Document à transmettre à l'entreprise", metaX, metaWidth, cursorY + 17.3 * MM, 5, false, color('#9a9da3'));
-        cursorY += HEADER_HEIGHT + SECTION_GAP;
-        const infoGap = 2 * MM;
-        const infoAvailable = CONTENT_WIDTH - infoGap * 2;
-        const infoRatios = [1.3, 1, .8];
-        const ratioTotal = infoRatios.reduce((sum, value) => sum + value, 0);
-        const infoWidths = infoRatios.map((value) => infoAvailable * value / ratioTotal);
-        const infoCards = [
-            { label: 'ENTREPRISE', strong: artisan.company || 'Entreprise', small: artisan.contactName || 'Contact non renseigné' },
-            { label: 'TÉLÉPHONE', strong: artisan.phone || '—', small: artisan.email || artisan.orderEmail || 'E-mail non renseigné' },
-            { label: 'INTERVENTIONS À VENIR', strong: String(rows.length), small: 'hors étapes terminées' },
-        ];
-        let infoX = MARGIN_X;
-        infoCards.forEach((card, index) => {
-            const width = infoWidths[index];
-            fillRect(page, infoX, cursorY, width, INFO_HEIGHT, COLORS.soft);
-            fillRect(page, infoX, cursorY, 1.6 * MM, INFO_HEIGHT, COLORS.red);
-            strokeRect(page, infoX, cursorY, width, INFO_HEIGHT, color('#dfe1e4'), .55);
-            drawText(page, card.label, infoX + 4.5 * MM, cursorY + 3 * MM, 5, true, COLORS.muted);
-            drawText(page, truncateText(card.strong, width - 8 * MM, 12, true), infoX + 4.5 * MM, cursorY + 6.5 * MM, 12, true, color('#282b30'));
-            drawText(page, truncateText(card.small, width - 8 * MM, 6), infoX + 4.5 * MM, cursorY + 11.2 * MM, 6, false, color('#737780'));
-            infoX += width + infoGap;
-        });
-        cursorY += INFO_HEIGHT + SECTION_GAP;
-        let columnX = MARGIN_X;
-        columns.forEach((column) => {
-            fillRect(page, columnX, cursorY, column.width, TABLE_HEADER_HEIGHT, COLORS.dark);
-            drawText(page, column.label, columnX + 2 * MM, cursorY + 3 * MM, 6, true, COLORS.white);
-            drawLine(page, columnX + column.width, cursorY, columnX + column.width, cursorY + TABLE_HEADER_HEIGHT, color('#454950'), .45);
-            columnX += column.width;
-        });
-        strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, TABLE_HEADER_HEIGHT, COLORS.borderStrong, .65);
-        cursorY += TABLE_HEADER_HEIGHT;
-        const pageRows = chunks[pageIndex];
-        if (!pageRows.length) {
-            const emptyHeight = 28 * MM;
-            strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, emptyHeight, COLORS.borderStrong, .6);
-            drawCenteredText(page, 'Aucune intervention future programmée avec cette entreprise.', MARGIN_X, CONTENT_WIDTH, cursorY + 11 * MM, 8, true, COLORS.muted);
-            cursorY += emptyHeight;
-        }
-        else {
-            pageRows.forEach((row, rowIndex) => {
-                const background = rowIndex % 2 === 1 ? COLORS.soft : COLORS.white;
-                fillRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, ROW_HEIGHT, background);
-                strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, ROW_HEIGHT, color('#d7d9dc'), .42);
-                const address = row.project.address
-                    ? `${row.project.address} · ${row.project.postalCode ?? ''} ${row.project.city ?? ''}`.trim()
-                    : row.project.city || '—';
-                const values = [
-                    formatPdfIsoWeek(row.plannedDate),
-                    row.project.name || 'Sans nom',
-                    row.project.clientName || '—',
-                    address,
-                    row.definition.label || '—',
-                    row.overdue ? 'En retard' : statusLabels[row.stage.status],
-                    row.stage.note || '—',
-                ];
-                let cellX = MARGIN_X;
-                values.forEach((value, columnIndex) => {
-                    const column = columns[columnIndex];
-                    if (columnIndex > 0)
-                        drawLine(page, cellX, cursorY, cellX, cursorY + ROW_HEIGHT, color('#cfd2d6'), .35);
-                    if (columnIndex === 0) {
-                        drawText(page, truncateText(value, column.width - 4 * MM, 7.5, true), cellX + 2 * MM, cursorY + 4.1 * MM, 7.5, true, COLORS.redDark);
-                    }
-                    else if (columnIndex === 5) {
-                        const statusColors = row.overdue
-                            ? { bg: color('#fff0f1'), fg: color('#a61f2e') }
-                            : row.stage.status === 'in_progress'
-                                ? { bg: color('#fff7e6'), fg: color('#9a5a09') }
-                                : row.stage.status === 'scheduled'
-                                    ? { bg: color('#eef5fb'), fg: color('#285f89') }
-                                    : row.stage.status === 'blocked'
-                                        ? { bg: color('#fff0f1'), fg: color('#a61f2e') }
-                                        : { bg: color('#eef2f7'), fg: color('#434851') };
-                        const label = truncateText(value, column.width - 4 * MM, 5.5, true);
-                        const pillWidth = Math.min(column.width - 4 * MM, estimateTextWidth(label, 5.5, true) + 3 * MM);
-                        fillRect(page, cellX + 2 * MM, cursorY + 3.7 * MM, pillWidth, 5.5 * MM, statusColors.bg);
-                        drawText(page, label, cellX + 3 * MM, cursorY + 5.1 * MM, 5.5, true, statusColors.fg);
-                    }
-                    else {
-                        const fontSize = 7;
-                        drawWrappedText(page, value, cellX + 2 * MM, cursorY + 3.2 * MM, column.width - 4 * MM, fontSize, false, COLORS.text, 2, 8.2);
-                    }
-                    cellX += column.width;
-                });
-                cursorY += ROW_HEIGHT;
-            });
-        }
-        const footerY = PAGE_HEIGHT - MARGIN_BOTTOM - (FOOTER_HEIGHT - FOOTER_GAP);
-        drawLine(page, MARGIN_X, footerY - FOOTER_TOP_PADDING, MARGIN_X + CONTENT_WIDTH, footerY - FOOTER_TOP_PADDING, color('#d4d6da'), .55);
-        const observationWidth = Math.max(80 * MM, CONTENT_WIDTH * .72);
-        drawText(page, 'Observations entreprise', MARGIN_X, footerY, 6, true, color('#555b64'));
-        strokeRect(page, MARGIN_X, footerY + 4 * MM, observationWidth, OBSERVATION_HEIGHT, color('#c8ccd1'), .55);
-        const footerText = "Planning indicatif généré depuis Conduct'Home · À confirmer avec le conducteur de travaux";
-        drawWrappedText(page, footerText, MARGIN_X + observationWidth + 5 * MM, footerY + 7 * MM, CONTENT_WIDTH - observationWidth - 5 * MM, 5, false, color('#8c9096'), 2, 6.2);
-        if (pages.length > 1)
-            drawText(page, `Page ${pageIndex + 1}/${pages.length}`, PAGE_WIDTH - MARGIN_X - 28, PAGE_HEIGHT - MARGIN_BOTTOM - 6, 5, true, color('#8c9096'));
-    });
-    const logoHex = base64ToHex(LOGO_JPEG_BASE64);
-    const objectCount = 5 + pages.length * 2;
-    const objects = new Array(objectCount + 1).fill('');
-    objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-    const pageObjectNumbers = pages.map((_, index) => 6 + index * 2);
-    objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((value) => `${value} 0 R`).join(' ')}] /Count ${pages.length} >>`;
-    objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
-    objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
-    objects[5] = `<< /Type /XObject /Subtype /Image /Width ${LOGO_WIDTH} /Height ${LOGO_HEIGHT} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${logoHex.length + 1} >>\nstream\n${logoHex}>\nendstream`;
-    pages.forEach((page, index) => {
-        const pageObjectNumber = 6 + index * 2;
-        const contentObjectNumber = pageObjectNumber + 1;
-        const stream = page.commands.join('\n');
-        const streamLength = new TextEncoder().encode(stream).length;
-        objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${number(PAGE_WIDTH)} ${number(PAGE_HEIGHT)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
-        objects[contentObjectNumber] = `<< /Length ${streamLength} >>\nstream\n${stream}\nendstream`;
-    });
-    const encoder = new TextEncoder();
-    let pdf = '%PDF-1.4\n';
-    const offsets = [0];
-    for (let index = 1; index < objects.length; index += 1) {
-        offsets[index] = encoder.encode(pdf).length;
-        pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
-    }
-    const xrefOffset = encoder.encode(pdf).length;
-    pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
-    for (let index = 1; index < objects.length; index += 1)
-        pdf += `${offsets[index].toString().padStart(10, '0')} 00000 n \n`;
-    pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-    return new Blob([encoder.encode(pdf)], { type: 'application/pdf' });
-}
-const sanitizePlanningFileName = (value) => value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[\\/:*?"<>|]/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-exports.sanitizePlanningFileName = sanitizePlanningFileName;
-
-},
-"src/lib/outlookDraft": function(module, exports, require) {
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createOutlookDraft = createOutlookDraft;
-const blobToBase64 = (blob) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-    reader.onerror = () => reject(reader.error ?? new Error('Lecture du fichier impossible.'));
-    reader.readAsDataURL(blob);
-});
-const sanitizeHeader = (value) => value.replace(/[\r\n]+/g, ' ').trim();
-const encodeBlobPart = async ({ blob, name, mimeType }) => {
-    const encoded = await blobToBase64(blob);
-    const lines = encoded.match(/.{1,76}/g)?.join('\r\n') ?? '';
-    return {
-        lines,
-        safeName: name.replaceAll('"', ''),
-        contentType: mimeType || blob.type || 'application/octet-stream',
-    };
-};
-async function createOutlookDraft({ to, subject, body, htmlBody, inlineImages = [], attachments = [], fileName }) {
-    const stamp = Date.now();
-    const mixedBoundary = `----ConductHomeMixed-${stamp}`;
-    const relatedBoundary = `----ConductHomeRelated-${stamp}`;
-    const alternativeBoundary = `----ConductHomeAlternative-${stamp}`;
-    const hasRichBody = Boolean(htmlBody || inlineImages.length);
-    let content = [
-        'X-Unsent: 1',
-        `To: ${sanitizeHeader(to)}`,
-        `Subject: ${sanitizeHeader(subject)}`,
-        'MIME-Version: 1.0',
-        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
-        '',
-        '',
-    ].join('\r\n');
-    if (hasRichBody) {
-        content += [
-            `--${mixedBoundary}`,
-            `Content-Type: multipart/related; boundary="${relatedBoundary}"`,
-            '',
-            `--${relatedBoundary}`,
-            `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
-            '',
-            `--${alternativeBoundary}`,
-            'Content-Type: text/plain; charset="UTF-8"',
-            'Content-Transfer-Encoding: 8bit',
-            '',
-            body,
-            '',
-            `--${alternativeBoundary}`,
-            'Content-Type: text/html; charset="UTF-8"',
-            'Content-Transfer-Encoding: 8bit',
-            '',
-            htmlBody || body,
-            '',
-            `--${alternativeBoundary}--`,
-            '',
-        ].join('\r\n');
-        for (const image of inlineImages) {
-            const encoded = await encodeBlobPart(image);
-            content += [
-                `--${relatedBoundary}`,
-                `Content-Type: ${encoded.contentType}; name="${encoded.safeName}"`,
-                `Content-ID: <${sanitizeHeader(image.contentId)}>`,
-                `Content-Disposition: inline; filename="${encoded.safeName}"`,
-                'Content-Transfer-Encoding: base64',
-                '',
-                encoded.lines,
-                '',
-            ].join('\r\n');
-        }
-        content += `--${relatedBoundary}--\r\n`;
-    }
-    else {
-        content += [
-            `--${mixedBoundary}`,
-            'Content-Type: text/plain; charset="UTF-8"',
-            'Content-Transfer-Encoding: 8bit',
-            '',
-            body,
-            '',
-        ].join('\r\n');
-    }
-    for (const attachment of attachments) {
-        const encoded = await encodeBlobPart(attachment);
-        content += [
-            `--${mixedBoundary}`,
-            `Content-Type: ${encoded.contentType}; name="${encoded.safeName}"`,
-            `Content-Disposition: attachment; filename="${encoded.safeName}"`,
-            'Content-Transfer-Encoding: base64',
-            '',
-            encoded.lines,
-            '',
-        ].join('\r\n');
-    }
-    content += `--${mixedBoundary}--\r\n`;
-    const eml = new Blob([content], { type: 'message/rfc822' });
-    const url = URL.createObjectURL(eml);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName || `${subject.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Brouillon Outlook'}.eml`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
-
 
 },
 "src/components/PlanningBoard": function(module, exports, require) {
@@ -1702,9 +1410,9 @@ const react_1 = require("react");
 const stages_1 = require("../data/stages");
 const artisans_1 = require("../lib/artisans");
 const planning_1 = require("../lib/planning");
+const Modal_1 = require("./Modal");
 const artisanPlanningPdf_1 = require("../lib/artisanPlanningPdf");
 const outlookDraft_1 = require("../lib/outlookDraft");
-const Modal_1 = require("./Modal");
 const statusLabels = {
     todo: 'À planifier',
     scheduled: 'Planifiée',
@@ -1725,7 +1433,7 @@ const formatPrintDate = (date) => {
         return '—';
     return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit' }).format(new Date(`${date}T12:00:00`));
 };
-const formatPlanningIsoWeek = (date) => {
+const formatIsoWeek = (date) => {
     if (!date)
         return '—';
     const parsed = new Date(`${date}T12:00:00`);
@@ -2001,7 +1709,7 @@ Cordialement,`;
     return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack planning-view planning-v2", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header planning-page-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Planning par \u00E9tapes" }), (0, jsx_runtime_1.jsx)("h1", { children: "Planning g\u00E9n\u00E9ral" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-header-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button print-planning-button", onClick: printPlanning, children: "\u2399 Imprimer / PDF" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: onAddProject, children: "+ Nouveau chantier" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "planning-toolbar panel planning-toolbar-v2", children: [(0, jsx_runtime_1.jsxs)("label", { className: "search-field planning-search", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u2315" }), (0, jsx_runtime_1.jsx)("input", { value: search, onChange: (event) => setSearch(event.target.value), placeholder: "Rechercher un chantier, un client ou une ville" })] }), (0, jsx_runtime_1.jsxs)("label", { className: "select-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise" }), (0, jsx_runtime_1.jsxs)("select", { value: artisanFilter, onChange: (event) => setArtisanFilter(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "all", children: "Toutes les entreprises" }), artisanCompanies.map((name) => (0, jsx_runtime_1.jsx)("option", { value: name, children: name }, name))] })] }), (0, jsx_runtime_1.jsxs)("label", { className: "select-field", children: [(0, jsx_runtime_1.jsx)("span", { children: "\u00C9tat du planning" }), (0, jsx_runtime_1.jsxs)("select", { value: planningFilter, onChange: (event) => setPlanningFilter(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "all", children: "Tous les chantiers" }), (0, jsx_runtime_1.jsx)("option", { value: "unplanned", children: "Dates manquantes" }), (0, jsx_runtime_1.jsx)("option", { value: "late", children: "\u00C9tapes en retard" })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "density-control", "aria-label": "Densit\u00E9 du planning", children: [(0, jsx_runtime_1.jsx)("button", { className: density === 'comfortable' ? 'active' : '', onClick: () => setDensity('comfortable'), children: "Confort" }), (0, jsx_runtime_1.jsx)("button", { className: density === 'compact' ? 'active' : '', onClick: () => setDensity('compact'), children: "Fin" }), (0, jsx_runtime_1.jsx)("button", { className: density === 'dense' ? 'active' : '', onClick: () => setDensity('dense'), children: "Tr\u00E8s fin" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "planning-summary-strip", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: filtered.length }), (0, jsx_runtime_1.jsx)("span", { children: "chantiers affich\u00E9s" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: filtered.reduce((total, project) => total + project.stages.filter((stage) => !stage.plannedDate).length, 0) }), (0, jsx_runtime_1.jsx)("span", { children: "dates \u00E0 renseigner" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: filtered.reduce((total, project) => total + project.stages.filter((stage) => stage.status !== 'done' && isPast(stage.plannedDate)).length, 0) }), (0, jsx_runtime_1.jsx)("span", { children: "\u00E9tapes en retard" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-legend-v2", children: [(0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("i", { className: "status-dot-v2 done" }), " Termin\u00E9"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("i", { className: "status-dot-v2 in-progress" }), " En cours"] }), (0, jsx_runtime_1.jsxs)("span", { children: [(0, jsx_runtime_1.jsx)("i", { className: "status-dot-v2 late" }), " En retard"] })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "artisan-planning-panel panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-head", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Planning artisan" }), (0, jsx_runtime_1.jsx)("h2", { children: "Sortir un planning par entreprise" }), (0, jsx_runtime_1.jsx)("p", { children: "S\u00E9lectionne une entreprise pour g\u00E9n\u00E9rer la liste de ses prochaines interventions programm\u00E9es." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-actions", children: [(0, jsx_runtime_1.jsxs)("label", { className: "select-field artisan-planning-select", children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise \u00E0 envoyer" }), (0, jsx_runtime_1.jsxs)("select", { value: artisanPrintId, onChange: (event) => setArtisanPrintId(event.target.value), children: [(0, jsx_runtime_1.jsx)("option", { value: "", children: "Choisir une entreprise" }), artisans
                                                         .slice()
                                                         .sort((a, b) => a.company.localeCompare(b.company, 'fr'))
-                                                        .map((artisan) => (0, jsx_runtime_1.jsx)("option", { value: artisan.id, children: artisan.company }, artisan.id))] })] }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: printArtisanPlanning, disabled: !selectedArtisan, children: "\u2399 PDF artisan" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: () => void emailArtisanPlanning(), disabled: !selectedArtisan || preparingArtisanMail, children: preparingArtisanMail ? 'Préparation…' : '✉ Envoyer le planning' })] })] }), artisanMailMessage && (0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-mail-message", children: artisanMailMessage }), selectedArtisan ? ((0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-preview", children: [(0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-identity", children: [(0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.company }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedArtisan.contactName || 'Contact non renseigné', " \u00B7 ", selectedArtisan.phone || 'Téléphone non renseigné'] }), (0, jsx_runtime_1.jsxs)("small", { children: ["\u00C9tapes d\u00E9clar\u00E9es : ", selectedArtisanStageLabels.length ? selectedArtisanStageLabels.join(', ') : 'aucune étape cochée'] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-count", children: [(0, jsx_runtime_1.jsx)("strong", { children: artisanPlanningRows.length }), (0, jsx_runtime_1.jsx)("span", { children: "interventions \u00E0 venir" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-mini-list", children: [artisanPlanningRows.slice(0, 6).map((row) => row && ((0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("b", { children: formatPlanningIsoWeek(row.plannedDate) }), (0, jsx_runtime_1.jsxs)("span", { children: [row.project.name, " \u00B7 ", row.definition.label] }), (0, jsx_runtime_1.jsx)("small", { children: row.project.city || row.project.address || 'Adresse non renseignée' })] }, row.id))), artisanPlanningRows.length === 0 && (0, jsx_runtime_1.jsx)("p", { children: "Aucune intervention future programm\u00E9e avec cette entreprise." })] })] })) : ((0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-empty", children: "Choisis une entreprise pour pr\u00E9visualiser son planning avant impression." }))] }), (0, jsx_runtime_1.jsx)("section", { className: `planning-shell panel planning-shell-v2 ${density}`, children: (0, jsx_runtime_1.jsxs)("div", { className: "planning-scroll planning-scroll-v2", children: [(0, jsx_runtime_1.jsxs)("table", { className: "planning-table planning-table-v2", children: [(0, jsx_runtime_1.jsxs)("thead", { children: [(0, jsx_runtime_1.jsxs)("tr", { className: "planning-groups-row-v2", children: [(0, jsx_runtime_1.jsxs)("th", { className: "project-sticky-head", rowSpan: 2, children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier" }), (0, jsx_runtime_1.jsx)("small", { children: "Avancement g\u00E9n\u00E9ral" })] }), groupedStages.map(({ group, stages }) => ((0, jsx_runtime_1.jsx)("th", { className: `group-heading-v2 group-${group.replace(/[^a-zA-Z]/g, '').toLowerCase()}`, colSpan: stages.length, children: group }, group)))] }), (0, jsx_runtime_1.jsx)("tr", { className: "planning-stage-row-v2", children: stages_1.STAGES.map((stage, index) => ((0, jsx_runtime_1.jsx)("th", { className: "stage-heading-v2", title: stage.label, children: (0, jsx_runtime_1.jsx)("div", { className: "stage-heading-card", children: (0, jsx_runtime_1.jsx)("strong", { children: stage.label }) }) }, stage.id))) })] }), (0, jsx_runtime_1.jsx)("tbody", { children: filtered.map((project) => {
+                                                        .map((artisan) => (0, jsx_runtime_1.jsx)("option", { value: artisan.id, children: artisan.company }, artisan.id))] })] }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: printArtisanPlanning, disabled: !selectedArtisan, children: "\u2399 PDF artisan" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: () => void emailArtisanPlanning(), disabled: !selectedArtisan || preparingArtisanMail, children: preparingArtisanMail ? 'Préparation…' : '✉ Envoyer le planning' })] })] }), artisanMailMessage && (0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-mail-message", children: artisanMailMessage }), selectedArtisan ? ((0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-preview", children: [(0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-identity", children: [(0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.company }), (0, jsx_runtime_1.jsxs)("span", { children: [selectedArtisan.contactName || 'Contact non renseigné', " \u00B7 ", selectedArtisan.phone || 'Téléphone non renseigné'] }), (0, jsx_runtime_1.jsxs)("small", { children: ["\u00C9tapes d\u00E9clar\u00E9es : ", selectedArtisanStageLabels.length ? selectedArtisanStageLabels.join(', ') : 'aucune étape cochée'] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-count", children: [(0, jsx_runtime_1.jsx)("strong", { children: artisanPlanningRows.length }), (0, jsx_runtime_1.jsx)("span", { children: "interventions \u00E0 venir" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-planning-mini-list", children: [artisanPlanningRows.slice(0, 6).map((row) => row && ((0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("b", { children: formatIsoWeek(row.plannedDate) }), (0, jsx_runtime_1.jsxs)("span", { children: [row.project.name, " \u00B7 ", row.definition.label] }), (0, jsx_runtime_1.jsx)("small", { children: row.project.city || row.project.address || 'Adresse non renseignée' })] }, row.id))), artisanPlanningRows.length === 0 && (0, jsx_runtime_1.jsx)("p", { children: "Aucune intervention future programm\u00E9e avec cette entreprise." })] })] })) : ((0, jsx_runtime_1.jsx)("p", { className: "artisan-planning-empty", children: "Choisis une entreprise pour pr\u00E9visualiser son planning avant impression." }))] }), (0, jsx_runtime_1.jsx)("section", { className: `planning-shell panel planning-shell-v2 ${density}`, children: (0, jsx_runtime_1.jsxs)("div", { className: "planning-scroll planning-scroll-v2", children: [(0, jsx_runtime_1.jsxs)("table", { className: "planning-table planning-table-v2", children: [(0, jsx_runtime_1.jsxs)("thead", { children: [(0, jsx_runtime_1.jsxs)("tr", { className: "planning-groups-row-v2", children: [(0, jsx_runtime_1.jsxs)("th", { className: "project-sticky-head", rowSpan: 2, children: [(0, jsx_runtime_1.jsx)("span", { children: "Chantier" }), (0, jsx_runtime_1.jsx)("small", { children: "Avancement g\u00E9n\u00E9ral" })] }), groupedStages.map(({ group, stages }) => ((0, jsx_runtime_1.jsx)("th", { className: `group-heading-v2 group-${group.replace(/[^a-zA-Z]/g, '').toLowerCase()}`, colSpan: stages.length, children: group }, group)))] }), (0, jsx_runtime_1.jsx)("tr", { className: "planning-stage-row-v2", children: stages_1.STAGES.map((stage, index) => ((0, jsx_runtime_1.jsx)("th", { className: "stage-heading-v2", title: stage.label, children: (0, jsx_runtime_1.jsx)("div", { className: "stage-heading-card", children: (0, jsx_runtime_1.jsx)("strong", { children: stage.label }) }) }, stage.id))) })] }), (0, jsx_runtime_1.jsx)("tbody", { children: filtered.map((project) => {
                                         const progress = (0, planning_1.getProgress)(project);
                                         const currentStage = (0, planning_1.getCurrentStage)(project);
                                         return ((0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("td", { className: "project-sticky-cell", children: (0, jsx_runtime_1.jsxs)("div", { className: "project-planning-card", children: [(0, jsx_runtime_1.jsxs)("div", { className: "project-planning-title", children: [(0, jsx_runtime_1.jsx)("strong", { children: project.name }), (0, jsx_runtime_1.jsxs)("span", { children: [progress, "%"] })] }), (0, jsx_runtime_1.jsxs)("p", { children: [project.city, " \u00B7 ", project.clientName] }), (0, jsx_runtime_1.jsx)("div", { className: "project-progress-v2", children: (0, jsx_runtime_1.jsx)("i", { style: { width: `${progress}%` } }) }), (0, jsx_runtime_1.jsxs)("small", { children: ["En cours : ", (0, planning_1.getStageLabel)(currentStage?.stageId)] })] }) }), stages_1.STAGES.map((definition) => {
@@ -2011,7 +1719,7 @@ Cordialement,`;
                                                     const overdue = scheduleState?.status === 'late';
                                                     return ((0, jsx_runtime_1.jsx)("td", { className: "planning-cell-v2", children: (0, jsx_runtime_1.jsxs)("button", { className: `lot-card status-${stage.status} ${overdue ? 'is-overdue' : ''} ${scheduleState ? `schedule-${scheduleState.status}` : ''}`, onClick: () => openEditor(project, stage), title: stage.note ? `${definition.label} — ${stage.note}` : `Modifier ${definition.label}`, children: [(0, jsx_runtime_1.jsxs)("span", { className: "lot-card-topline", children: [(0, jsx_runtime_1.jsx)("span", { className: `lot-status status-${stage.status}`, children: (0, jsx_runtime_1.jsx)("span", { className: "lot-status-label", children: statusLabels[stage.status] }) }), overdue && (0, jsx_runtime_1.jsx)("em", { children: "Retard" })] }), (0, jsx_runtime_1.jsxs)("span", { className: `lot-date ${stage.plannedDate ? '' : 'empty'}`, children: [(0, jsx_runtime_1.jsx)("b", { children: "Date" }), " ", stage.plannedDate ? (0, planning_1.formatShortDate)(stage.plannedDate) : 'Date à définir', definition.id === 'map' && stage.plannedTime ? ` · ${stage.plannedTime}` : ''] }), !definition.dateOnly && ((0, jsx_runtime_1.jsxs)("span", { className: `lot-artisan ${artisanName ? '' : 'empty'}`, children: [(0, jsx_runtime_1.jsx)("b", { children: "Ent." }), " ", artisanName || 'Entreprise à renseigner'] })), scheduleState && (0, jsx_runtime_1.jsx)("span", { className: `lot-schedule ${scheduleState.status}`, children: scheduleState.label }), (0, jsx_runtime_1.jsx)("span", { className: "lot-edit-hint", children: "Modifier" })] }) }, definition.id));
                                                 })] }, project.id));
-                                    }) })] }), !filtered.length && (0, jsx_runtime_1.jsx)("div", { className: "empty-planning", children: projects.length ? 'Aucun chantier ne correspond aux filtres.' : 'Aucun chantier créé. Utilise le bouton « Nouveau chantier » pour commencer.' })] }) }), (0, jsx_runtime_1.jsxs)("section", { className: "artisan-print-sheet", "aria-hidden": "true", children: [(0, jsx_runtime_1.jsxs)("header", { className: "artisan-print-hero", children: [(0, jsx_runtime_1.jsx)("div", { className: "artisan-print-brand", children: (0, jsx_runtime_1.jsx)("img", { src: "./logo-arlogis.png", alt: "Maisons ARLOGIS" }) }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-print-title", children: [(0, jsx_runtime_1.jsx)("small", { children: "CONDUCT'HOME \u00B7 PLANNING ENTREPRISE" }), (0, jsx_runtime_1.jsx)("h2", { children: selectedArtisan ? `Planning prévisionnel — ${selectedArtisan.company}` : 'Planning prévisionnel entreprise' }), (0, jsx_runtime_1.jsx)("p", { children: "Prochaines interventions programm\u00E9es sur les chantiers Maisons ARLOGIS." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-print-meta", children: [(0, jsx_runtime_1.jsx)("span", { children: "Date d'\u00E9dition" }), (0, jsx_runtime_1.jsx)("strong", { children: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) }), (0, jsx_runtime_1.jsx)("small", { children: "Document \u00E0 transmettre \u00E0 l'entreprise" })] })] }), selectedArtisan && ((0, jsx_runtime_1.jsxs)("section", { className: "artisan-print-info", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise" }), (0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.company }), (0, jsx_runtime_1.jsx)("small", { children: selectedArtisan.contactName || 'Contact non renseigné' })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E9l\u00E9phone" }), (0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.phone || '—' }), (0, jsx_runtime_1.jsx)("small", { children: selectedArtisan.email || 'E-mail non renseigné' })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Interventions \u00E0 venir" }), (0, jsx_runtime_1.jsx)("strong", { children: artisanPlanningRows.length }), (0, jsx_runtime_1.jsx)("small", { children: "hors \u00E9tapes termin\u00E9es" })] })] })), (0, jsx_runtime_1.jsxs)("table", { className: "artisan-print-table", children: [(0, jsx_runtime_1.jsx)("thead", { children: (0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("th", { children: "Semaine" }), (0, jsx_runtime_1.jsx)("th", { children: "Chantier" }), (0, jsx_runtime_1.jsx)("th", { children: "Client" }), (0, jsx_runtime_1.jsx)("th", { children: "Adresse / ville" }), (0, jsx_runtime_1.jsx)("th", { children: "\u00C9tape" }), (0, jsx_runtime_1.jsx)("th", { children: "Statut" }), (0, jsx_runtime_1.jsx)("th", { children: "Note" })] }) }), (0, jsx_runtime_1.jsxs)("tbody", { children: [artisanPlanningRows.map((row) => row && ((0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("td", { children: (0, jsx_runtime_1.jsx)("strong", { children: formatPlanningIsoWeek(row.plannedDate) }) }), (0, jsx_runtime_1.jsx)("td", { children: row.project.name }), (0, jsx_runtime_1.jsx)("td", { children: row.project.clientName }), (0, jsx_runtime_1.jsx)("td", { children: row.project.address ? `${row.project.address} · ${row.project.postalCode ?? ''} ${row.project.city}` : row.project.city }), (0, jsx_runtime_1.jsx)("td", { children: row.definition.label }), (0, jsx_runtime_1.jsx)("td", { children: (0, jsx_runtime_1.jsx)("span", { className: `artisan-print-status status-${row.stage.status}`, children: row.overdue ? 'En retard' : statusLabels[row.stage.status] }) }), (0, jsx_runtime_1.jsx)("td", { children: row.stage.note || '—' })] }, row.id))), selectedArtisan && artisanPlanningRows.length === 0 && ((0, jsx_runtime_1.jsx)("tr", { children: (0, jsx_runtime_1.jsx)("td", { colSpan: 7, className: "artisan-print-empty", children: "Aucune intervention future programm\u00E9e avec cette entreprise." }) }))] })] }), (0, jsx_runtime_1.jsxs)("footer", { className: "artisan-print-footer", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Observations entreprise" }), (0, jsx_runtime_1.jsx)("span", {})] }), (0, jsx_runtime_1.jsx)("small", { children: "Planning indicatif g\u00E9n\u00E9r\u00E9 depuis Conduct'Home \u00B7 \u00C0 confirmer avec le conducteur de travaux" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "planning-print-sheet", "aria-hidden": "true", children: [(0, jsx_runtime_1.jsxs)("header", { className: "planning-print-hero", children: [(0, jsx_runtime_1.jsx)("div", { className: "planning-print-brand", children: (0, jsx_runtime_1.jsx)("img", { src: "./logo-arlogis.png", alt: "Maisons ARLOGIS" }) }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-print-title", children: [(0, jsx_runtime_1.jsx)("small", { children: "CONDUCT'HOME \u00B7 SUIVI OP\u00C9RATIONNEL" }), (0, jsx_runtime_1.jsx)("h2", { children: "Planning g\u00E9n\u00E9ral des chantiers" }), (0, jsx_runtime_1.jsx)("p", { children: "Dates d'intervention, entreprises affect\u00E9es et \u00E9tat d'avancement." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-print-meta", children: [(0, jsx_runtime_1.jsx)("span", { children: "Date d'\u00E9dition" }), (0, jsx_runtime_1.jsx)("strong", { children: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) }), (0, jsx_runtime_1.jsx)("small", { children: "Format conseill\u00E9 : A3 paysage" })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-print-summary", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.projects }), (0, jsx_runtime_1.jsx)("span", { children: "Chantiers affich\u00E9s" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.completed }), (0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes termin\u00E9es" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "warning", children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.unplanned }), (0, jsx_runtime_1.jsx)("span", { children: "Dates \u00E0 planifier" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "danger", children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.late }), (0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes en retard" })] })] }), (0, jsx_runtime_1.jsxs)("table", { className: "planning-print-table", children: [(0, jsx_runtime_1.jsxs)("colgroup", { children: [(0, jsx_runtime_1.jsx)("col", { className: "print-project-col" }), stages_1.STAGES.map((stage) => (0, jsx_runtime_1.jsx)("col", { className: "print-stage-col" }, stage.id))] }), (0, jsx_runtime_1.jsxs)("thead", { children: [(0, jsx_runtime_1.jsxs)("tr", { className: "planning-print-groups", children: [(0, jsx_runtime_1.jsxs)("th", { className: "print-project-column", rowSpan: 2, children: [(0, jsx_runtime_1.jsx)("span", { children: "CHANTIER" }), (0, jsx_runtime_1.jsx)("small", { children: "Client \u00B7 ville \u00B7 avancement" })] }), groupedStages.map(({ group, stages }) => ((0, jsx_runtime_1.jsx)("th", { className: `print-group print-group-${printGroupClasses[group]}`, colSpan: stages.length, children: group }, group)))] }), (0, jsx_runtime_1.jsx)("tr", { className: "planning-print-stages", children: stages_1.STAGES.map((stage) => ((0, jsx_runtime_1.jsx)("th", { title: stage.label, children: (0, jsx_runtime_1.jsx)("div", { className: "print-stage-heading-content", children: (0, jsx_runtime_1.jsx)("strong", { children: stage.shortLabel }) }) }, stage.id))) })] }), (0, jsx_runtime_1.jsx)("tbody", { children: filtered.map((project) => {
+                                    }) })] }), !filtered.length && (0, jsx_runtime_1.jsx)("div", { className: "empty-planning", children: projects.length ? 'Aucun chantier ne correspond aux filtres.' : 'Aucun chantier créé. Utilise le bouton « Nouveau chantier » pour commencer.' })] }) }), (0, jsx_runtime_1.jsxs)("section", { className: "artisan-print-sheet", "aria-hidden": "true", children: [(0, jsx_runtime_1.jsxs)("header", { className: "artisan-print-hero", children: [(0, jsx_runtime_1.jsx)("div", { className: "artisan-print-brand", children: (0, jsx_runtime_1.jsx)("img", { src: "./logo-arlogis.png", alt: "Maisons ARLOGIS" }) }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-print-title", children: [(0, jsx_runtime_1.jsx)("small", { children: "CONDUCT'HOME \u00B7 PLANNING ENTREPRISE" }), (0, jsx_runtime_1.jsx)("h2", { children: selectedArtisan ? `Planning prévisionnel — ${selectedArtisan.company}` : 'Planning prévisionnel entreprise' }), (0, jsx_runtime_1.jsx)("p", { children: "Prochaines interventions programm\u00E9es sur les chantiers Maisons ARLOGIS." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "artisan-print-meta", children: [(0, jsx_runtime_1.jsx)("span", { children: "Date d'\u00E9dition" }), (0, jsx_runtime_1.jsx)("strong", { children: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) }), (0, jsx_runtime_1.jsx)("small", { children: "Document \u00E0 transmettre \u00E0 l'entreprise" })] })] }), selectedArtisan && ((0, jsx_runtime_1.jsxs)("section", { className: "artisan-print-info", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Entreprise" }), (0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.company }), (0, jsx_runtime_1.jsx)("small", { children: selectedArtisan.contactName || 'Contact non renseigné' })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E9l\u00E9phone" }), (0, jsx_runtime_1.jsx)("strong", { children: selectedArtisan.phone || '—' }), (0, jsx_runtime_1.jsx)("small", { children: selectedArtisan.email || 'E-mail non renseigné' })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Interventions \u00E0 venir" }), (0, jsx_runtime_1.jsx)("strong", { children: artisanPlanningRows.length }), (0, jsx_runtime_1.jsx)("small", { children: "hors \u00E9tapes termin\u00E9es" })] })] })), (0, jsx_runtime_1.jsxs)("table", { className: "artisan-print-table", children: [(0, jsx_runtime_1.jsx)("thead", { children: (0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("th", { children: "Semaine" }), (0, jsx_runtime_1.jsx)("th", { children: "Chantier" }), (0, jsx_runtime_1.jsx)("th", { children: "Client" }), (0, jsx_runtime_1.jsx)("th", { children: "Adresse / ville" }), (0, jsx_runtime_1.jsx)("th", { children: "\u00C9tape" }), (0, jsx_runtime_1.jsx)("th", { children: "Statut" }), (0, jsx_runtime_1.jsx)("th", { children: "Note" })] }) }), (0, jsx_runtime_1.jsxs)("tbody", { children: [artisanPlanningRows.map((row) => row && ((0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsx)("td", { children: (0, jsx_runtime_1.jsx)("strong", { children: formatIsoWeek(row.plannedDate) }) }), (0, jsx_runtime_1.jsx)("td", { children: row.project.name }), (0, jsx_runtime_1.jsx)("td", { children: row.project.clientName }), (0, jsx_runtime_1.jsx)("td", { children: row.project.address ? `${row.project.address} · ${row.project.postalCode ?? ''} ${row.project.city}` : row.project.city }), (0, jsx_runtime_1.jsx)("td", { children: row.definition.label }), (0, jsx_runtime_1.jsx)("td", { children: (0, jsx_runtime_1.jsx)("span", { className: `artisan-print-status status-${row.stage.status}`, children: row.overdue ? 'En retard' : statusLabels[row.stage.status] }) }), (0, jsx_runtime_1.jsx)("td", { children: row.stage.note || '—' })] }, row.id))), selectedArtisan && artisanPlanningRows.length === 0 && ((0, jsx_runtime_1.jsx)("tr", { children: (0, jsx_runtime_1.jsx)("td", { colSpan: 7, className: "artisan-print-empty", children: "Aucune intervention future programm\u00E9e avec cette entreprise." }) }))] })] }), (0, jsx_runtime_1.jsxs)("footer", { className: "artisan-print-footer", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: "Observations entreprise" }), (0, jsx_runtime_1.jsx)("span", {})] }), (0, jsx_runtime_1.jsx)("small", { children: "Planning indicatif g\u00E9n\u00E9r\u00E9 depuis Conduct'Home \u00B7 \u00C0 confirmer avec le conducteur de travaux" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "planning-print-sheet", "aria-hidden": "true", children: [(0, jsx_runtime_1.jsxs)("header", { className: "planning-print-hero", children: [(0, jsx_runtime_1.jsx)("div", { className: "planning-print-brand", children: (0, jsx_runtime_1.jsx)("img", { src: "./logo-arlogis.png", alt: "Maisons ARLOGIS" }) }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-print-title", children: [(0, jsx_runtime_1.jsx)("small", { children: "CONDUCT'HOME \u00B7 SUIVI OP\u00C9RATIONNEL" }), (0, jsx_runtime_1.jsx)("h2", { children: "Planning g\u00E9n\u00E9ral des chantiers" }), (0, jsx_runtime_1.jsx)("p", { children: "Dates d'intervention, entreprises affect\u00E9es et \u00E9tat d'avancement." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-print-meta", children: [(0, jsx_runtime_1.jsx)("span", { children: "Date d'\u00E9dition" }), (0, jsx_runtime_1.jsx)("strong", { children: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) }), (0, jsx_runtime_1.jsx)("small", { children: "Format conseill\u00E9 : A3 paysage" })] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "planning-print-summary", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.projects }), (0, jsx_runtime_1.jsx)("span", { children: "Chantiers affich\u00E9s" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.completed }), (0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes termin\u00E9es" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "warning", children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.unplanned }), (0, jsx_runtime_1.jsx)("span", { children: "Dates \u00E0 planifier" })] }), (0, jsx_runtime_1.jsxs)("div", { className: "danger", children: [(0, jsx_runtime_1.jsx)("strong", { children: printStats.late }), (0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes en retard" })] })] }), (0, jsx_runtime_1.jsxs)("table", { className: "planning-print-table", children: [(0, jsx_runtime_1.jsxs)("colgroup", { children: [(0, jsx_runtime_1.jsx)("col", { className: "print-project-col" }), stages_1.STAGES.map((stage) => (0, jsx_runtime_1.jsx)("col", { className: "print-stage-col" }, stage.id))] }), (0, jsx_runtime_1.jsxs)("thead", { children: [(0, jsx_runtime_1.jsxs)("tr", { className: "planning-print-groups", children: [(0, jsx_runtime_1.jsxs)("th", { className: "print-project-column", rowSpan: 2, children: [(0, jsx_runtime_1.jsx)("span", { children: "CHANTIER" }), (0, jsx_runtime_1.jsx)("small", { children: "Client \u00B7 ville \u00B7 avancement" })] }), groupedStages.map(({ group, stages }) => ((0, jsx_runtime_1.jsx)("th", { className: `print-group print-group-${printGroupClasses[group]}`, colSpan: stages.length, children: group }, group)))] }), (0, jsx_runtime_1.jsx)("tr", { className: "planning-print-stages", children: stages_1.STAGES.map((stage) => ((0, jsx_runtime_1.jsx)("th", { title: stage.label, children: (0, jsx_runtime_1.jsx)("div", { className: "print-stage-heading-content", children: (0, jsx_runtime_1.jsx)("strong", { children: stage.shortLabel }) }) }, stage.id))) })] }), (0, jsx_runtime_1.jsx)("tbody", { children: filtered.map((project) => {
                                     const progress = (0, planning_1.getProgress)(project);
                                     const currentStage = (0, planning_1.getCurrentStage)(project);
                                     return ((0, jsx_runtime_1.jsxs)("tr", { children: [(0, jsx_runtime_1.jsxs)("td", { className: "print-project-cell", children: [(0, jsx_runtime_1.jsxs)("div", { className: "print-project-heading", children: [(0, jsx_runtime_1.jsx)("strong", { children: project.name }), (0, jsx_runtime_1.jsxs)("b", { children: [progress, "%"] })] }), (0, jsx_runtime_1.jsx)("span", { children: project.clientName }), (0, jsx_runtime_1.jsx)("small", { children: project.city || project.address || 'Adresse non renseignée' }), (0, jsx_runtime_1.jsx)("div", { className: "print-progress", children: (0, jsx_runtime_1.jsx)("i", { style: { width: `${progress}%` } }) }), (0, jsx_runtime_1.jsxs)("em", { children: ["En cours : ", (0, planning_1.getStageLabel)(currentStage?.stageId)] })] }), stages_1.STAGES.map((definition) => {
@@ -2140,6 +1848,7 @@ function ProjectsView({ projects, documents, selectedProjectId, onSelect, onAddP
             setEditingProject(null);
         }
         catch {
+            // Le composant parent affiche le détail de l’erreur.
         }
         finally {
             setSaving(false);
@@ -2156,6 +1865,7 @@ function ProjectsView({ projects, documents, selectedProjectId, onSelect, onAddP
             setMode('archived');
         }
         catch {
+            // Le composant parent affiche le détail de l’erreur.
         }
         finally {
             setSaving(false);
@@ -2168,6 +1878,7 @@ function ProjectsView({ projects, documents, selectedProjectId, onSelect, onAddP
             setMode('active');
         }
         catch {
+            // Le composant parent affiche le détail de l’erreur.
         }
         finally {
             setSaving(false);
@@ -2232,6 +1943,7 @@ function ProjectsView({ projects, documents, selectedProjectId, onSelect, onAddP
             setMeetingForm(null);
         }
         catch {
+            // Le parent affiche l'erreur.
         }
         finally {
             setSaving(false);
@@ -2249,6 +1961,7 @@ function ProjectsView({ projects, documents, selectedProjectId, onSelect, onAddP
             });
         }
         catch {
+            // Le parent affiche l'erreur.
         }
         finally {
             setSaving(false);
@@ -2270,6 +1983,7 @@ function ProjectsView({ projects, documents, selectedProjectId, onSelect, onAddP
             await onSaveProject({ ...selected, controlChecks: updated, updatedAt: now });
         }
         catch {
+            // Le parent affiche l'erreur.
         }
         finally {
             setSaving(false);
@@ -2348,6 +2062,7 @@ const react_1 = require("react");
 exports.NAV_ITEMS = [
     { id: 'dashboard', label: 'Tableau de bord', icon: '' },
     { id: 'week', label: 'Semaine', icon: '' },
+    { id: 'calendar', label: 'Calendrier', icon: '' },
     { id: 'tasks', label: 'Tâches', icon: '' },
     { id: 'planning', label: 'Planning', icon: '' },
     { id: 'projects', label: 'Chantiers', icon: '' },
@@ -2467,7 +2182,12 @@ const react_1 = require("react");
 class ViewErrorBoundary extends react_1.Component {
     constructor() {
         super(...arguments);
-        this.state = { failed: false };
+        Object.defineProperty(this, "state", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: { failed: false }
+        });
     }
     static getDerivedStateFromError() {
         return { failed: true };
@@ -2492,45 +2212,22 @@ const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const stages_1 = require("../data/stages");
 const planning_1 = require("../lib/planning");
-const priorityRank = { urgent: 0, high: 1, normal: 2 };
-function startOfIsoWeek(value = new Date()) {
-    const date = new Date(value);
-    date.setHours(12, 0, 0, 0);
-    const day = date.getDay() || 7;
-    date.setDate(date.getDate() - day + 1);
-    return date;
-}
-function toDateId(value) {
-    return value.toISOString().slice(0, 10);
-}
-function addDays(date, days) {
-    const next = new Date(date);
-    next.setDate(next.getDate() + days);
-    return next;
-}
-function getIsoWeek(date = new Date()) {
-    const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNumber = target.getUTCDay() || 7;
-    target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
-    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
-    return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
+const calendar_1 = require("../lib/calendar");
 function formatDayLabel(date) {
     return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'short' }).format(date);
 }
-function WeekView({ projects, artisans: _artisans, tasks, onCompleteTask, onOpenProject, onOpenPlanning }) {
+function WeekView({ projects, onOpenProject, onOpenPlanning }) {
     const [weekOffset, setWeekOffset] = (0, react_1.useState)(0);
-    const [completingIds, setCompletingIds] = (0, react_1.useState)([]);
     const weekStart = (0, react_1.useMemo)(() => {
-        const monday = startOfIsoWeek();
+        const monday = (0, calendar_1.startOfIsoWeek)();
         monday.setDate(monday.getDate() + weekOffset * 7);
         return monday;
     }, [weekOffset]);
-    const days = (0, react_1.useMemo)(() => Array.from({ length: 5 }, (_, index) => addDays(weekStart, index)), [weekStart]);
-    const dayIds = (0, react_1.useMemo)(() => days.map(toDateId), [days]);
+    const days = (0, react_1.useMemo)(() => Array.from({ length: 5 }, (_, index) => (0, calendar_1.addDays)(weekStart, index)), [weekStart]);
+    const dayIds = (0, react_1.useMemo)(() => days.map(calendar_1.localDateId), [days]);
     const weekItems = (0, react_1.useMemo)(() => {
-        const todayId = toDateId(new Date());
-        const interventions = projects.flatMap((project) => project.stages.flatMap((stage) => {
+        const todayId = (0, calendar_1.localDateId)();
+        return projects.flatMap((project) => project.stages.flatMap((stage) => {
             if (!stage.plannedDate)
                 return [];
             const definition = stages_1.STAGES.find((item) => item.id === stage.stageId);
@@ -2543,65 +2240,26 @@ function WeekView({ projects, artisans: _artisans, tasks, onCompleteTask, onOpen
                 .filter((dateId) => dateId >= stage.plannedDate && dateId <= endDate)
                 .map((dateId) => ({
                 id: `${project.id}-${stage.stageId}-${dateId}`,
-                type: 'intervention',
                 date: dateId,
                 project,
-                title: definition.label,
-                subtitle: project.name,
+                stageLabel: definition.label,
                 status: stage.status,
                 note: stage.note,
-                time: stage.plannedTime,
             }));
         }));
-        const weekTasks = tasks
-            .filter((task) => !task.completedAt && task.dueDate && dayIds.includes(task.dueDate))
-            .map((task) => ({
-            id: task.id,
-            type: 'task',
-            date: task.dueDate,
-            task,
-            title: task.title,
-            subtitle: projects.find((project) => project.id === task.projectId)?.name || 'Tâche générale',
-            priority: task.priority,
-        }));
-        return [...interventions, ...weekTasks];
-    }, [projects, tasks, dayIds]);
-    const completeTask = (task) => {
-        if (completingIds.includes(task.id))
-            return;
-        setCompletingIds((current) => [...current, task.id]);
-        window.setTimeout(async () => {
-            try {
-                await onCompleteTask(task);
-            }
-            finally {
-                setCompletingIds((current) => current.filter((id) => id !== task.id));
-            }
-        }, 520);
-    };
+    }, [projects, dayIds]);
     const printWeek = () => {
         const previousTitle = document.title;
-        document.title = `Planning semaine ${getIsoWeek(weekStart)} - ARLOGIS`;
+        document.title = `Planning semaine ${(0, calendar_1.getIsoWeek)(weekStart)} - ARLOGIS`;
         window.print();
         window.setTimeout(() => { document.title = previousTitle; }, 600);
     };
-    return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack week-view", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "Organisation hebdomadaire" }), (0, jsx_runtime_1.jsxs)("h1", { children: ["Semaine ", getIsoWeek(weekStart)] })] }), (0, jsx_runtime_1.jsxs)("div", { className: "week-header-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset((value) => value - 1), children: "\u2190 Semaine pr\u00E9c\u00E9dente" }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset(0), children: "Aujourd\u2019hui" }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset((value) => value + 1), children: "Semaine suivante \u2192" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: printWeek, children: "\u2399 Imprimer / PDF" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "week-summary panel", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Semaine" }), (0, jsx_runtime_1.jsx)("strong", { children: getIsoWeek(weekStart) }), (0, jsx_runtime_1.jsxs)("small", { children: [(0, planning_1.formatDate)(toDateId(days[0])), " \u2192 ", (0, planning_1.formatDate)(toDateId(days[4]))] })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Interventions" }), (0, jsx_runtime_1.jsx)("strong", { children: weekItems.filter((item) => item.type === 'intervention').length }), (0, jsx_runtime_1.jsx)("small", { children: "sur 5 jours" })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "T\u00E2ches" }), (0, jsx_runtime_1.jsx)("strong", { children: weekItems.filter((item) => item.type === 'task').length }), (0, jsx_runtime_1.jsx)("small", { children: "\u00E0 faire cette semaine" })] }), (0, jsx_runtime_1.jsx)("button", { onClick: onOpenPlanning, children: "Ouvrir le planning g\u00E9n\u00E9ral" })] }), (0, jsx_runtime_1.jsx)("section", { className: "week-grid", children: days.map((day) => {
-                    const dateId = toDateId(day);
+    return ((0, jsx_runtime_1.jsxs)("div", { className: "view-stack week-view", children: [(0, jsx_runtime_1.jsxs)("header", { className: "page-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "\u00C9tapes chantier" }), (0, jsx_runtime_1.jsxs)("h1", { children: ["Semaine ", (0, calendar_1.getIsoWeek)(weekStart)] }), (0, jsx_runtime_1.jsx)("p", { children: "Une vue rapide de ce qui se passe sur chaque chantier." })] }), (0, jsx_runtime_1.jsxs)("div", { className: "week-header-actions", children: [(0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset((value) => value - 1), children: "\u2190 Semaine pr\u00E9c\u00E9dente" }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset(0), children: "Aujourd\u2019hui" }), (0, jsx_runtime_1.jsx)("button", { className: "secondary-button", onClick: () => setWeekOffset((value) => value + 1), children: "Semaine suivante \u2192" }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: printWeek, children: "\u2399 Imprimer / PDF" })] })] }), (0, jsx_runtime_1.jsxs)("section", { className: "week-summary panel week-summary-stages-only", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Semaine" }), (0, jsx_runtime_1.jsx)("strong", { children: (0, calendar_1.getIsoWeek)(weekStart) }), (0, jsx_runtime_1.jsxs)("small", { children: [(0, planning_1.formatDate)((0, calendar_1.localDateId)(days[0])), " \u2192 ", (0, planning_1.formatDate)((0, calendar_1.localDateId)(days[4]))] })] }), (0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { children: "\u00C9tapes planifi\u00E9es" }), (0, jsx_runtime_1.jsx)("strong", { children: weekItems.length }), (0, jsx_runtime_1.jsx)("small", { children: "sur 5 jours" })] }), (0, jsx_runtime_1.jsx)("button", { onClick: onOpenPlanning, children: "Ouvrir le planning g\u00E9n\u00E9ral" })] }), (0, jsx_runtime_1.jsx)("section", { className: "week-grid", children: days.map((day) => {
+                    const dateId = (0, calendar_1.localDateId)(day);
                     const dayItems = weekItems
                         .filter((item) => item.date === dateId)
-                        .sort((a, b) => {
-                        if (a.type !== b.type)
-                            return a.type === 'intervention' ? -1 : 1;
-                        if (a.type === 'task' && b.type === 'task')
-                            return priorityRank[a.priority] - priorityRank[b.priority];
-                        if (a.type === 'intervention' && b.type === 'intervention') {
-                            const timeComparison = (a.time || '99:99').localeCompare(b.time || '99:99');
-                            if (timeComparison !== 0)
-                                return timeComparison;
-                        }
-                        return a.title.localeCompare(b.title, 'fr');
-                    });
-                    return ((0, jsx_runtime_1.jsxs)("article", { className: "week-day-card panel", children: [(0, jsx_runtime_1.jsxs)("header", { children: [(0, jsx_runtime_1.jsx)("span", { children: formatDayLabel(day) }), (0, jsx_runtime_1.jsx)("strong", { children: dayItems.length })] }), (0, jsx_runtime_1.jsxs)("div", { className: "week-day-content", children: [dayItems.map((item) => item.type === 'intervention' ? ((0, jsx_runtime_1.jsxs)("button", { className: `week-item intervention status-${item.status} compact`, onClick: () => onOpenProject(item.project.id), title: item.note || item.title, children: [(0, jsx_runtime_1.jsx)("strong", { children: item.project.name }), (0, jsx_runtime_1.jsx)("small", { children: item.time ? `${item.time} · ${item.title}` : item.title })] }, item.id)) : ((0, jsx_runtime_1.jsxs)("article", { className: `week-item task priority-${item.priority}${completingIds.includes(item.task.id) ? ' completing' : ''}`, children: [(0, jsx_runtime_1.jsx)("button", { className: "task-check", onClick: () => completeTask(item.task), "aria-label": `Terminer ${item.task.title}`, children: (0, jsx_runtime_1.jsx)("span", { children: "\u2713" }) }), (0, jsx_runtime_1.jsx)("div", { children: (0, jsx_runtime_1.jsxs)("strong", { children: [item.title, " - ", item.subtitle] }) }), (0, jsx_runtime_1.jsx)("em", { children: item.priority === 'urgent' ? 'Urgente' : item.priority === 'high' ? 'Importante' : 'Normale' })] }, item.id))), !dayItems.length && (0, jsx_runtime_1.jsx)("p", { className: "week-empty", children: "Rien de programm\u00E9." })] })] }, dateId));
+                        .sort((left, right) => left.project.name.localeCompare(right.project.name, 'fr'));
+                    return ((0, jsx_runtime_1.jsxs)("article", { className: "week-day-card panel", children: [(0, jsx_runtime_1.jsxs)("header", { children: [(0, jsx_runtime_1.jsx)("span", { children: formatDayLabel(day) }), (0, jsx_runtime_1.jsx)("strong", { children: dayItems.length })] }), (0, jsx_runtime_1.jsxs)("div", { className: "week-day-content", children: [dayItems.map((item) => ((0, jsx_runtime_1.jsx)("button", { className: `week-item intervention status-${item.status} compact week-stage-line`, onClick: () => onOpenProject(item.project.id), title: item.note || `${item.project.name} - ${item.stageLabel}`, children: (0, jsx_runtime_1.jsxs)("strong", { children: [item.project.name, " - ", item.stageLabel] }) }, item.id))), !dayItems.length && (0, jsx_runtime_1.jsx)("p", { className: "week-empty", children: "Aucune \u00E9tape planifi\u00E9e." })] })] }, dateId));
                 }) })] }));
 }
 
@@ -4172,6 +3830,8 @@ function normalizeLotOrders(lots) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOCUMENTS = exports.PROJECTS = exports.ARTISANS = exports.LOTS = void 0;
 const lots_1 = require("./lots");
+// Version vierge : seuls les lots de base sont conservés.
+// Les clients, chantiers, entreprises et documents sont créés par l'utilisateur.
 exports.LOTS = lots_1.DEFAULT_LOTS.map((lot) => ({
     ...lot,
     stageIds: [...(lot.stageIds ?? [])],
@@ -4185,6 +3845,7 @@ exports.DOCUMENTS = [];
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MEETING_REMINDER_STAGE_IDS = exports.STAGE_IDS = exports.STAGES = void 0;
+// Trame métier demandée par l'utilisateur. L'ordre ci-dessous est celui du planning.
 exports.STAGES = [
     { id: 'map', label: 'MAP', shortLabel: 'MAP', color: '#94a3b8', group: 'Préparation', dateOnly: true },
     { id: 'av_exchange', label: 'AV envoi & retour', shortLabel: 'AV envoi/retour', color: '#94a3b8', group: 'Préparation', dateOnly: true },
@@ -4243,6 +3904,346 @@ exports.MEETING_REMINDER_STAGE_IDS = [
 ];
 
 },
+"src/lib/artisanPlanningPdf": function(module, exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sanitizePlanningFileName = void 0;
+exports.createArtisanPlanningPdf = createArtisanPlanningPdf;
+const MM = 72 / 25.4;
+const PAGE_WIDTH = 420 * MM;
+const PAGE_HEIGHT = 297 * MM;
+const MARGIN_X = 7 * MM;
+const MARGIN_TOP = 7 * MM;
+const MARGIN_BOTTOM = 6 * MM;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+const HEADER_HEIGHT = 27 * MM;
+const SECTION_GAP = 4 * MM;
+const INFO_HEIGHT = 15 * MM;
+const TABLE_HEADER_HEIGHT = 9 * MM;
+const ROW_HEIGHT = 12 * MM;
+const FOOTER_GAP = 5 * MM;
+const FOOTER_TOP_PADDING = 3 * MM;
+const OBSERVATION_HEIGHT = 14 * MM;
+const FOOTER_HEIGHT = FOOTER_GAP + FOOTER_TOP_PADDING + OBSERVATION_HEIGHT + 7 * MM;
+const LOGO_WIDTH = 520;
+const LOGO_HEIGHT = 273;
+const LOGO_JPEG_BASE64 = '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';
+const cp1252Extra = {
+    '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87,
+    'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a, '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e, '‘': 0x91,
+    '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97, '˜': 0x98,
+    '™': 0x99, 'š': 0x9a, '›': 0x9b, 'œ': 0x9c, 'ž': 0x9e, 'Ÿ': 0x9f,
+};
+const toCp1252Byte = (character) => {
+    const extra = cp1252Extra[character];
+    if (extra !== undefined)
+        return extra;
+    const code = character.codePointAt(0) ?? 63;
+    if (code >= 32 && code <= 255)
+        return code;
+    const simplified = character.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const simplifiedCode = simplified.codePointAt(0);
+    return simplifiedCode && simplifiedCode >= 32 && simplifiedCode <= 126 ? simplifiedCode : 63;
+};
+const pdfHex = (value) => `<${Array.from(value).map((character) => toCp1252Byte(character).toString(16).padStart(2, '0')).join('')}>`;
+const base64ToHex = (value) => {
+    const binary = atob(value);
+    let output = '';
+    for (let index = 0; index < binary.length; index += 1) {
+        output += binary.charCodeAt(index).toString(16).padStart(2, '0');
+    }
+    return output;
+};
+const number = (value) => Number(value.toFixed(2)).toString();
+const color = (hex) => {
+    const normalized = hex.replace('#', '');
+    return [0, 2, 4].map((offset) => parseInt(normalized.slice(offset, offset + 2), 16) / 255);
+};
+const COLORS = {
+    red: color('#c51a2e'),
+    redDark: color('#9f1525'),
+    dark: color('#272a2f'),
+    text: color('#2f3338'),
+    muted: color('#777c84'),
+    border: color('#d7d9dd'),
+    borderStrong: color('#b9bdc3'),
+    soft: color('#f8f9fa'),
+    cream: color('#fffdfa'),
+    meta: color('#f5f5f2'),
+    white: [1, 1, 1],
+};
+const estimateTextWidth = (value, fontSize, bold = false) => {
+    const factor = bold ? 1.04 : 1;
+    return Array.from(value).reduce((width, character) => {
+        if (character === ' ')
+            return width + fontSize * 0.28;
+        if ("ilI.,'!:;|".includes(character))
+            return width + fontSize * 0.25;
+        if ('MW@%&'.includes(character))
+            return width + fontSize * 0.82;
+        if (/[A-ZÀÂÄÇÉÈÊËÎÏÔÖÙÛÜ]/.test(character))
+            return width + fontSize * 0.62 * factor;
+        if (/[0-9]/.test(character))
+            return width + fontSize * 0.56 * factor;
+        return width + fontSize * 0.5 * factor;
+    }, 0);
+};
+const truncateText = (value, maxWidth, fontSize, bold = false) => {
+    const cleaned = value.replace(/\s+/g, ' ').trim() || '—';
+    if (estimateTextWidth(cleaned, fontSize, bold) <= maxWidth)
+        return cleaned;
+    let output = cleaned;
+    while (output.length > 1 && estimateTextWidth(`${output}…`, fontSize, bold) > maxWidth)
+        output = output.slice(0, -1);
+    return `${output.trimEnd()}…`;
+};
+const wrapText = (value, maxWidth, fontSize, bold = false, maxLines = 2) => {
+    const words = value.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+    if (!words.length)
+        return ['—'];
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+        const candidate = current ? `${current} ${word}` : word;
+        if (!current || estimateTextWidth(candidate, fontSize, bold) <= maxWidth) {
+            current = candidate;
+            continue;
+        }
+        lines.push(current);
+        current = word;
+        if (lines.length === maxLines - 1)
+            break;
+    }
+    if (current && lines.length < maxLines)
+        lines.push(current);
+    const consumed = lines.join(' ').split(' ').length;
+    if (consumed < words.length)
+        lines[lines.length - 1] = truncateText(`${lines[lines.length - 1]} ${words.slice(consumed).join(' ')}`, maxWidth, fontSize, bold);
+    return lines.slice(0, maxLines);
+};
+const formatIsoWeek = (value) => {
+    const parsed = new Date(`${value}T12:00:00`);
+    if (Number.isNaN(parsed.getTime()))
+        return value || '—';
+    const target = new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+    const dayNumber = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `S ${week}`;
+};
+const statusLabels = {
+    todo: 'À planifier',
+    scheduled: 'Planifiée',
+    in_progress: 'En cours',
+    done: 'Terminée',
+    blocked: 'Bloquée',
+};
+function createArtisanPlanningPdf({ artisan, rows }) {
+    const availableRowsHeight = PAGE_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM - HEADER_HEIGHT - SECTION_GAP - INFO_HEIGHT - SECTION_GAP - TABLE_HEADER_HEIGHT - FOOTER_HEIGHT;
+    const rowsPerPage = Math.max(1, Math.floor(availableRowsHeight / ROW_HEIGHT));
+    const chunks = rows.length
+        ? Array.from({ length: Math.ceil(rows.length / rowsPerPage) }, (_, index) => rows.slice(index * rowsPerPage, (index + 1) * rowsPerPage))
+        : [[]];
+    const pages = chunks.map(() => ({ commands: [] }));
+    const fixedWidths = [28, 35, 42, 58, 38, 24].map((value) => value * MM);
+    const columns = [
+        { label: 'SEMAINE', width: fixedWidths[0] },
+        { label: 'CHANTIER', width: fixedWidths[1] },
+        { label: 'CLIENT', width: fixedWidths[2] },
+        { label: 'ADRESSE / VILLE', width: fixedWidths[3] },
+        { label: 'ÉTAPE', width: fixedWidths[4] },
+        { label: 'STATUT', width: fixedWidths[5] },
+        { label: 'NOTE', width: CONTENT_WIDTH - fixedWidths.reduce((sum, value) => sum + value, 0) },
+    ];
+    const addCommand = (page, command) => page.commands.push(command);
+    const fillRect = (page, x, yTop, width, height, rgb) => {
+        addCommand(page, `${rgb.map(number).join(' ')} rg ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re f`);
+    };
+    const strokeRect = (page, x, yTop, width, height, rgb, lineWidth = .6) => {
+        addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} ${number(width)} ${number(height)} re S`);
+    };
+    const drawLine = (page, x1, yTop1, x2, yTop2, rgb, lineWidth = .6) => {
+        addCommand(page, `${rgb.map(number).join(' ')} RG ${number(lineWidth)} w ${number(x1)} ${number(PAGE_HEIGHT - yTop1)} m ${number(x2)} ${number(PAGE_HEIGHT - yTop2)} l S`);
+    };
+    const drawText = (page, value, x, yTop, fontSize, bold = false, rgb = COLORS.text) => {
+        addCommand(page, `BT /${bold ? 'F2' : 'F1'} ${number(fontSize)} Tf ${rgb.map(number).join(' ')} rg 1 0 0 1 ${number(x)} ${number(PAGE_HEIGHT - yTop - fontSize)} Tm ${pdfHex(value)} Tj ET`);
+    };
+    const drawCenteredText = (page, value, x, width, yTop, fontSize, bold = false, rgb = COLORS.text) => {
+        drawText(page, value, x + Math.max(0, (width - estimateTextWidth(value, fontSize, bold)) / 2), yTop, fontSize, bold, rgb);
+    };
+    const drawWrappedText = (page, value, x, yTop, maxWidth, fontSize, bold = false, rgb = COLORS.text, maxLines = 2, lineHeight = fontSize * 1.18) => {
+        wrapText(value, maxWidth, fontSize, bold, maxLines).forEach((line, index) => drawText(page, line, x, yTop + index * lineHeight, fontSize, bold, rgb));
+    };
+    const drawImage = (page, x, yTop, width, height) => {
+        addCommand(page, `q ${number(width)} 0 0 ${number(height)} ${number(x)} ${number(PAGE_HEIGHT - yTop - height)} cm /Im1 Do Q`);
+    };
+    pages.forEach((page, pageIndex) => {
+        fillRect(page, 0, 0, PAGE_WIDTH, PAGE_HEIGHT, COLORS.white);
+        let cursorY = MARGIN_TOP;
+        const brandWidth = 64 * MM;
+        const metaWidth = 54 * MM;
+        const titleWidth = CONTENT_WIDTH - brandWidth - metaWidth;
+        fillRect(page, MARGIN_X, cursorY, brandWidth, HEADER_HEIGHT, COLORS.cream);
+        fillRect(page, MARGIN_X + brandWidth, cursorY, titleWidth, HEADER_HEIGHT, COLORS.white);
+        fillRect(page, MARGIN_X + brandWidth + titleWidth, cursorY, metaWidth, HEADER_HEIGHT, COLORS.meta);
+        strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, HEADER_HEIGHT, COLORS.border, .7);
+        drawLine(page, MARGIN_X + brandWidth, cursorY, MARGIN_X + brandWidth, cursorY + HEADER_HEIGHT, COLORS.border, .55);
+        drawLine(page, MARGIN_X + brandWidth + titleWidth, cursorY, MARGIN_X + brandWidth + titleWidth, cursorY + HEADER_HEIGHT, COLORS.border, .55);
+        const logoBoxWidth = 58 * MM;
+        const logoBoxHeight = 21 * MM;
+        const logoRatio = LOGO_WIDTH / LOGO_HEIGHT;
+        const renderedLogoHeight = logoBoxHeight;
+        const renderedLogoWidth = Math.min(logoBoxWidth, renderedLogoHeight * logoRatio);
+        drawImage(page, MARGIN_X + (brandWidth - renderedLogoWidth) / 2, cursorY + (HEADER_HEIGHT - renderedLogoHeight) / 2, renderedLogoWidth, renderedLogoHeight);
+        const titleX = MARGIN_X + brandWidth + 5 * MM;
+        drawText(page, "CONDUCT'HOME · PLANNING ENTREPRISE", titleX, cursorY + 6 * MM, 5, true, COLORS.redDark);
+        drawText(page, truncateText(`Planning prévisionnel — ${artisan.company || 'Entreprise'}`, titleWidth - 10 * MM, 17, true), titleX, cursorY + 10.4 * MM, 17, true, color('#25282d'));
+        drawText(page, 'Prochaines interventions programmées sur les chantiers Maisons ARLOGIS.', titleX, cursorY + 20.2 * MM, 7, false, color('#6a6e75'));
+        const metaX = MARGIN_X + brandWidth + titleWidth;
+        drawCenteredText(page, "DATE D'ÉDITION", metaX, metaWidth, cursorY + 6.2 * MM, 5, true, color('#858990'));
+        const editionDate = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
+        drawCenteredText(page, editionDate, metaX, metaWidth, cursorY + 11 * MM, 8, true, color('#2c2f34'));
+        drawCenteredText(page, "Document à transmettre à l'entreprise", metaX, metaWidth, cursorY + 17.3 * MM, 5, false, color('#9a9da3'));
+        cursorY += HEADER_HEIGHT + SECTION_GAP;
+        const infoGap = 2 * MM;
+        const infoAvailable = CONTENT_WIDTH - infoGap * 2;
+        const infoRatios = [1.3, 1, .8];
+        const ratioTotal = infoRatios.reduce((sum, value) => sum + value, 0);
+        const infoWidths = infoRatios.map((value) => infoAvailable * value / ratioTotal);
+        const infoCards = [
+            { label: 'ENTREPRISE', strong: artisan.company || 'Entreprise', small: artisan.contactName || 'Contact non renseigné' },
+            { label: 'TÉLÉPHONE', strong: artisan.phone || '—', small: artisan.email || artisan.orderEmail || 'E-mail non renseigné' },
+            { label: 'INTERVENTIONS À VENIR', strong: String(rows.length), small: 'hors étapes terminées' },
+        ];
+        let infoX = MARGIN_X;
+        infoCards.forEach((card, index) => {
+            const width = infoWidths[index];
+            fillRect(page, infoX, cursorY, width, INFO_HEIGHT, COLORS.soft);
+            fillRect(page, infoX, cursorY, 1.6 * MM, INFO_HEIGHT, COLORS.red);
+            strokeRect(page, infoX, cursorY, width, INFO_HEIGHT, color('#dfe1e4'), .55);
+            drawText(page, card.label, infoX + 4.5 * MM, cursorY + 3 * MM, 5, true, COLORS.muted);
+            drawText(page, truncateText(card.strong, width - 8 * MM, 12, true), infoX + 4.5 * MM, cursorY + 6.5 * MM, 12, true, color('#282b30'));
+            drawText(page, truncateText(card.small, width - 8 * MM, 6), infoX + 4.5 * MM, cursorY + 11.2 * MM, 6, false, color('#737780'));
+            infoX += width + infoGap;
+        });
+        cursorY += INFO_HEIGHT + SECTION_GAP;
+        let columnX = MARGIN_X;
+        columns.forEach((column) => {
+            fillRect(page, columnX, cursorY, column.width, TABLE_HEADER_HEIGHT, COLORS.dark);
+            drawText(page, column.label, columnX + 2 * MM, cursorY + 3 * MM, 6, true, COLORS.white);
+            drawLine(page, columnX + column.width, cursorY, columnX + column.width, cursorY + TABLE_HEADER_HEIGHT, color('#454950'), .45);
+            columnX += column.width;
+        });
+        strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, TABLE_HEADER_HEIGHT, COLORS.borderStrong, .65);
+        cursorY += TABLE_HEADER_HEIGHT;
+        const pageRows = chunks[pageIndex];
+        if (!pageRows.length) {
+            const emptyHeight = 28 * MM;
+            strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, emptyHeight, COLORS.borderStrong, .6);
+            drawCenteredText(page, 'Aucune intervention future programmée avec cette entreprise.', MARGIN_X, CONTENT_WIDTH, cursorY + 11 * MM, 8, true, COLORS.muted);
+            cursorY += emptyHeight;
+        }
+        else {
+            pageRows.forEach((row, rowIndex) => {
+                const background = rowIndex % 2 === 1 ? COLORS.soft : COLORS.white;
+                fillRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, ROW_HEIGHT, background);
+                strokeRect(page, MARGIN_X, cursorY, CONTENT_WIDTH, ROW_HEIGHT, color('#d7d9dc'), .42);
+                const address = row.project.address
+                    ? `${row.project.address} · ${row.project.postalCode ?? ''} ${row.project.city ?? ''}`.trim()
+                    : row.project.city || '—';
+                const values = [
+                    formatIsoWeek(row.plannedDate),
+                    row.project.name || 'Sans nom',
+                    row.project.clientName || '—',
+                    address,
+                    row.definition.label || '—',
+                    row.overdue ? 'En retard' : statusLabels[row.stage.status],
+                    row.stage.note || '—',
+                ];
+                let cellX = MARGIN_X;
+                values.forEach((value, columnIndex) => {
+                    const column = columns[columnIndex];
+                    if (columnIndex > 0)
+                        drawLine(page, cellX, cursorY, cellX, cursorY + ROW_HEIGHT, color('#cfd2d6'), .35);
+                    if (columnIndex === 0) {
+                        drawText(page, truncateText(value, column.width - 4 * MM, 7.5, true), cellX + 2 * MM, cursorY + 4.1 * MM, 7.5, true, COLORS.redDark);
+                    }
+                    else if (columnIndex === 5) {
+                        const statusColors = row.overdue
+                            ? { bg: color('#fff0f1'), fg: color('#a61f2e') }
+                            : row.stage.status === 'in_progress'
+                                ? { bg: color('#fff7e6'), fg: color('#9a5a09') }
+                                : row.stage.status === 'scheduled'
+                                    ? { bg: color('#eef5fb'), fg: color('#285f89') }
+                                    : row.stage.status === 'blocked'
+                                        ? { bg: color('#fff0f1'), fg: color('#a61f2e') }
+                                        : { bg: color('#eef2f7'), fg: color('#434851') };
+                        const label = truncateText(value, column.width - 4 * MM, 5.5, true);
+                        const pillWidth = Math.min(column.width - 4 * MM, estimateTextWidth(label, 5.5, true) + 3 * MM);
+                        fillRect(page, cellX + 2 * MM, cursorY + 3.7 * MM, pillWidth, 5.5 * MM, statusColors.bg);
+                        drawText(page, label, cellX + 3 * MM, cursorY + 5.1 * MM, 5.5, true, statusColors.fg);
+                    }
+                    else {
+                        const fontSize = 7;
+                        drawWrappedText(page, value, cellX + 2 * MM, cursorY + 3.2 * MM, column.width - 4 * MM, fontSize, false, COLORS.text, 2, 8.2);
+                    }
+                    cellX += column.width;
+                });
+                cursorY += ROW_HEIGHT;
+            });
+        }
+        const footerY = PAGE_HEIGHT - MARGIN_BOTTOM - (FOOTER_HEIGHT - FOOTER_GAP);
+        drawLine(page, MARGIN_X, footerY - FOOTER_TOP_PADDING, MARGIN_X + CONTENT_WIDTH, footerY - FOOTER_TOP_PADDING, color('#d4d6da'), .55);
+        const observationWidth = Math.max(80 * MM, CONTENT_WIDTH * .72);
+        drawText(page, 'Observations entreprise', MARGIN_X, footerY, 6, true, color('#555b64'));
+        strokeRect(page, MARGIN_X, footerY + 4 * MM, observationWidth, OBSERVATION_HEIGHT, color('#c8ccd1'), .55);
+        const footerText = "Planning indicatif généré depuis Conduct'Home · À confirmer avec le conducteur de travaux";
+        drawWrappedText(page, footerText, MARGIN_X + observationWidth + 5 * MM, footerY + 7 * MM, CONTENT_WIDTH - observationWidth - 5 * MM, 5, false, color('#8c9096'), 2, 6.2);
+        if (pages.length > 1)
+            drawText(page, `Page ${pageIndex + 1}/${pages.length}`, PAGE_WIDTH - MARGIN_X - 28, PAGE_HEIGHT - MARGIN_BOTTOM - 6, 5, true, color('#8c9096'));
+    });
+    const logoHex = base64ToHex(LOGO_JPEG_BASE64);
+    const objectCount = 5 + pages.length * 2;
+    const objects = new Array(objectCount + 1).fill('');
+    objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    const pageObjectNumbers = pages.map((_, index) => 6 + index * 2);
+    objects[2] = `<< /Type /Pages /Kids [${pageObjectNumbers.map((value) => `${value} 0 R`).join(' ')}] /Count ${pages.length} >>`;
+    objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    objects[5] = `<< /Type /XObject /Subtype /Image /Width ${LOGO_WIDTH} /Height ${LOGO_HEIGHT} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${logoHex.length + 1} >>\nstream\n${logoHex}>\nendstream`;
+    pages.forEach((page, index) => {
+        const pageObjectNumber = 6 + index * 2;
+        const contentObjectNumber = pageObjectNumber + 1;
+        const stream = page.commands.join('\n');
+        const streamLength = new TextEncoder().encode(stream).length;
+        objects[pageObjectNumber] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${number(PAGE_WIDTH)} ${number(PAGE_HEIGHT)}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> /Contents ${contentObjectNumber} 0 R >>`;
+        objects[contentObjectNumber] = `<< /Length ${streamLength} >>\nstream\n${stream}\nendstream`;
+    });
+    const encoder = new TextEncoder();
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    for (let index = 1; index < objects.length; index += 1) {
+        offsets[index] = encoder.encode(pdf).length;
+        pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+    }
+    const xrefOffset = encoder.encode(pdf).length;
+    pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+    for (let index = 1; index < objects.length; index += 1)
+        pdf += `${offsets[index].toString().padStart(10, '0')} 00000 n \n`;
+    pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+    return new Blob([encoder.encode(pdf)], { type: 'application/pdf' });
+}
+const sanitizePlanningFileName = (value) => value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+exports.sanitizePlanningFileName = sanitizePlanningFileName;
+
+},
 "src/lib/artisans": function(module, exports, require) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4292,6 +4293,9 @@ function getArtisanPrimaryLotId(artisan, lots) {
     const legacyIds = Array.isArray(artisan.lotIds)
         ? Array.from(new Set(artisan.lotIds.filter((id) => validIds.has(id))))
         : [];
+    // Un ancien enregistrement n'est repris automatiquement que s'il ne contient
+    // qu'un seul lot explicite. Les étapes et le champ historique « trade » ne
+    // doivent plus décider du classement métier.
     return legacyIds.length === 1 ? legacyIds[0] : undefined;
 }
 function getArtisanStageIds(artisan, lots = []) {
@@ -4365,6 +4369,82 @@ async function logoutLocalAccount() {
 }
 
 },
+"src/lib/calendar": function(module, exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MINI_CALENDAR_HOUR_HEIGHT = exports.CALENDAR_HOUR_HEIGHT = exports.CALENDAR_END_HOUR = exports.CALENDAR_START_HOUR = void 0;
+exports.localDateId = localDateId;
+exports.startOfIsoWeek = startOfIsoWeek;
+exports.addDays = addDays;
+exports.getIsoWeek = getIsoWeek;
+exports.formatCalendarDay = formatCalendarDay;
+exports.formatCalendarRange = formatCalendarRange;
+exports.timeToMinutes = timeToMinutes;
+exports.minutesToTime = minutesToTime;
+exports.getCalendarEventGeometry = getCalendarEventGeometry;
+exports.defaultCalendarTimes = defaultCalendarTimes;
+exports.CALENDAR_START_HOUR = 6;
+exports.CALENDAR_END_HOUR = 20;
+exports.CALENDAR_HOUR_HEIGHT = 52;
+exports.MINI_CALENDAR_HOUR_HEIGHT = 24;
+function localDateId(value = new Date()) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+function startOfIsoWeek(value = new Date()) {
+    const date = new Date(value);
+    date.setHours(12, 0, 0, 0);
+    const day = date.getDay() || 7;
+    date.setDate(date.getDate() - day + 1);
+    return date;
+}
+function addDays(value, days) {
+    const date = new Date(value);
+    date.setDate(date.getDate() + days);
+    return date;
+}
+function getIsoWeek(date = new Date()) {
+    const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNumber = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    return Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+function formatCalendarDay(value) {
+    return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'short' }).format(value);
+}
+function formatCalendarRange(start, end) {
+    const formatter = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long' });
+    return `${formatter.format(start)} au ${formatter.format(end)}`;
+}
+function timeToMinutes(value) {
+    const [hour, minute] = value.split(':').map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute))
+        return exports.CALENDAR_START_HOUR * 60;
+    return hour * 60 + minute;
+}
+function minutesToTime(value) {
+    const safe = Math.max(0, Math.min(24 * 60 - 1, Math.round(value)));
+    return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+}
+function getCalendarEventGeometry(event, hourHeight = exports.CALENDAR_HOUR_HEIGHT) {
+    const start = Math.max(exports.CALENDAR_START_HOUR * 60, timeToMinutes(event.startTime));
+    const end = Math.min(exports.CALENDAR_END_HOUR * 60, Math.max(start + 30, timeToMinutes(event.endTime)));
+    return {
+        top: ((start - exports.CALENDAR_START_HOUR * 60) / 60) * hourHeight,
+        height: Math.max(30, ((end - start) / 60) * hourHeight),
+    };
+}
+function defaultCalendarTimes(now = new Date()) {
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const rounded = Math.ceil(currentMinutes / 30) * 30;
+    const start = Math.max(exports.CALENDAR_START_HOUR * 60, Math.min((exports.CALENDAR_END_HOUR - 1) * 60, rounded));
+    return { startTime: minutesToTime(start), endTime: minutesToTime(Math.min(exports.CALENDAR_END_HOUR * 60, start + 60)) };
+}
+
+},
 "src/lib/cleanStart": function(module, exports, require) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -4411,6 +4491,7 @@ async function clearConductHomeBrowserData() {
             await Promise.all(names.filter((name) => /conduct|home|vite|workbox/i.test(name)).map((name) => caches.delete(name)));
         }
         catch {
+            // Le cache n'empêche pas la remise à zéro.
         }
     }
     if ('serviceWorker' in navigator) {
@@ -4419,6 +4500,7 @@ async function clearConductHomeBrowserData() {
             await Promise.all(registrations.map((registration) => registration.unregister()));
         }
         catch {
+            // Les service workers ne sont pas utilisés sur toutes les installations.
         }
     }
 }
@@ -4694,6 +4776,8 @@ function parseWorkspaceDocument(document) {
     return firestoreValueToJs(document.fields.workspace);
 }
 async function loadUserWorkspace(userId) {
+    // Nouveau chemin : un document par utilisateur. Il correspond aux règles
+    // Firestore les plus courantes : /users/{uid}.
     try {
         const directDocument = await firestoreRequest(`users/${userId}`);
         const directWorkspace = parseWorkspaceDocument(directDocument);
@@ -4701,6 +4785,7 @@ async function loadUserWorkspace(userId) {
             return directWorkspace;
     }
     catch {
+        // Compatibilité avec les versions précédentes.
     }
     const legacyDocument = await firestoreRequest(`users/${userId}/workspace/main`);
     return parseWorkspaceDocument(legacyDocument);
@@ -4720,6 +4805,8 @@ async function saveUserWorkspace(userId, workspace) {
         return;
     }
     catch {
+        // Si les anciennes règles n'autorisent que le chemin historique,
+        // on conserve une solution de repli.
     }
     await firestoreRequest(`users/${userId}/workspace/main`, {
         method: 'PATCH',
@@ -5097,6 +5184,114 @@ function downloadMeetingReportPdf(input) {
 }
 
 },
+"src/lib/outlookDraft": function(module, exports, require) {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createOutlookDraft = createOutlookDraft;
+const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.onerror = () => reject(reader.error ?? new Error('Lecture du fichier impossible.'));
+    reader.readAsDataURL(blob);
+});
+const sanitizeHeader = (value) => value.replace(/[\r\n]+/g, ' ').trim();
+const encodeBlobPart = async ({ blob, name, mimeType }) => {
+    const encoded = await blobToBase64(blob);
+    const lines = encoded.match(/.{1,76}/g)?.join('\r\n') ?? '';
+    return {
+        lines,
+        safeName: name.replaceAll('"', ''),
+        contentType: mimeType || blob.type || 'application/octet-stream',
+    };
+};
+async function createOutlookDraft({ to, subject, body, htmlBody, inlineImages = [], attachments = [], fileName, }) {
+    const stamp = Date.now();
+    const mixedBoundary = `----ConductHomeMixed-${stamp}`;
+    const relatedBoundary = `----ConductHomeRelated-${stamp}`;
+    const alternativeBoundary = `----ConductHomeAlternative-${stamp}`;
+    const hasRichBody = Boolean(htmlBody || inlineImages.length);
+    let content = [
+        'X-Unsent: 1',
+        `To: ${sanitizeHeader(to)}`,
+        `Subject: ${sanitizeHeader(subject)}`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+        '',
+        '',
+    ].join('\r\n');
+    if (hasRichBody) {
+        content += [
+            `--${mixedBoundary}`,
+            `Content-Type: multipart/related; boundary="${relatedBoundary}"`,
+            '',
+            `--${relatedBoundary}`,
+            `Content-Type: multipart/alternative; boundary="${alternativeBoundary}"`,
+            '',
+            `--${alternativeBoundary}`,
+            'Content-Type: text/plain; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            body,
+            '',
+            `--${alternativeBoundary}`,
+            'Content-Type: text/html; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            htmlBody || body,
+            '',
+            `--${alternativeBoundary}--`,
+            '',
+        ].join('\r\n');
+        for (const image of inlineImages) {
+            const encoded = await encodeBlobPart(image);
+            content += [
+                `--${relatedBoundary}`,
+                `Content-Type: ${encoded.contentType}; name="${encoded.safeName}"`,
+                `Content-ID: <${sanitizeHeader(image.contentId)}>`,
+                `Content-Disposition: inline; filename="${encoded.safeName}"`,
+                'Content-Transfer-Encoding: base64',
+                '',
+                encoded.lines,
+                '',
+            ].join('\r\n');
+        }
+        content += `--${relatedBoundary}--\r\n`;
+    }
+    else {
+        content += [
+            `--${mixedBoundary}`,
+            'Content-Type: text/plain; charset="UTF-8"',
+            'Content-Transfer-Encoding: 8bit',
+            '',
+            body,
+            '',
+        ].join('\r\n');
+    }
+    for (const attachment of attachments) {
+        const encoded = await encodeBlobPart(attachment);
+        content += [
+            `--${mixedBoundary}`,
+            `Content-Type: ${encoded.contentType}; name="${encoded.safeName}"`,
+            `Content-Disposition: attachment; filename="${encoded.safeName}"`,
+            'Content-Transfer-Encoding: base64',
+            '',
+            encoded.lines,
+            '',
+        ].join('\r\n');
+    }
+    content += `--${mixedBoundary}--\r\n`;
+    const eml = new Blob([content], { type: 'message/rfc822' });
+    const url = URL.createObjectURL(eml);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || `${subject.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Brouillon Outlook'}.eml`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+},
 "src/lib/planning": function(module, exports, require) {
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -5302,6 +5497,8 @@ exports.saveArtisan = saveArtisan;
 exports.removeArtisan = removeArtisan;
 exports.saveTask = saveTask;
 exports.removeTask = removeTask;
+exports.saveCalendarEvent = saveCalendarEvent;
+exports.removeCalendarEvent = removeCalendarEvent;
 exports.uploadDocument = uploadDocument;
 exports.moveDocumentCategory = moveDocumentCategory;
 exports.removeDocument = removeDocument;
@@ -5318,11 +5515,13 @@ const stages_1 = require("../data/stages");
 const artisans_1 = require("./artisans");
 const auth_1 = require("./auth");
 const firebase_1 = require("./firebase");
+// Les clés restent identiques à la version vierge précédente afin de conserver
+// les données déjà saisies dans ce navigateur après la mise à jour.
 const STORAGE_KEY = 'conduct-home-workspace-v1.2-clean';
 const DISMISSED_ALERTS_KEY = 'conduct-home-dismissed-alerts-v1.2-clean';
 const FILE_DB_NAME = 'conduct-home-files-v1.2-clean';
 const FILE_STORE_NAME = 'files';
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 const scopedKey = (baseKey) => {
     const accountKey = (0, auth_1.getCurrentAccountKey)();
     return accountKey ? `${baseKey}::${accountKey}` : baseKey;
@@ -5370,6 +5569,7 @@ const cloneSeed = () => JSON.parse(JSON.stringify({
     artisans: mockData_1.ARTISANS,
     documents: mockData_1.DOCUMENTS,
     tasks: [],
+    calendarEvents: [],
 }));
 const OLD_STAGE_CANDIDATES = {
     opening: ['opening'],
@@ -5508,6 +5708,24 @@ function migrateKnownLotStages(lots) {
     const customLots = lots.filter((lot) => !lots_1.DEFAULT_LOTS.some((defaultLot) => defaultLot.id === lot.id));
     return [...merged, ...customLots];
 }
+function migrateCalendarEvent(event) {
+    if (!event?.id || !event.date || !event.startTime || !event.note)
+        return undefined;
+    const startMinutes = Number(event.startTime.slice(0, 2)) * 60 + Number(event.startTime.slice(3, 5));
+    const fallbackEndMinutes = Number.isFinite(startMinutes) ? Math.min(20 * 60, startMinutes + 60) : 8 * 60;
+    const fallbackEnd = `${String(Math.floor(fallbackEndMinutes / 60)).padStart(2, '0')}:${String(fallbackEndMinutes % 60).padStart(2, '0')}`;
+    const timestamp = new Date().toISOString();
+    return {
+        id: String(event.id),
+        projectId: event.projectId ? String(event.projectId) : undefined,
+        date: String(event.date),
+        startTime: String(event.startTime),
+        endTime: event.endTime ? String(event.endTime) : fallbackEnd,
+        note: String(event.note),
+        createdAt: event.createdAt ? String(event.createdAt) : timestamp,
+        updatedAt: event.updatedAt ? String(event.updatedAt) : timestamp,
+    };
+}
 function migrateAutomaticMeetingTask(task, projects) {
     for (const stageId of stages_1.MEETING_REMINDER_STAGE_IDS) {
         const prefix = `task-rdv-client-${stageId}-`;
@@ -5544,6 +5762,9 @@ function migrateState(value) {
         artisans,
         documents: (Array.isArray(value.documents) ? value.documents : []).filter((document) => Boolean(document?.id && document?.projectId && document?.name)),
         tasks,
+        calendarEvents: (Array.isArray(value.calendarEvents) ? value.calendarEvents : [])
+            .map((event) => migrateCalendarEvent(event))
+            .filter((event) => Boolean(event)),
     };
 }
 function loadCachedLocal() {
@@ -5666,6 +5887,8 @@ async function saveLocal(state) {
         schemaVersion: SCHEMA_VERSION,
         workspaceUpdatedAt: new Date().toISOString(),
     };
+    // L'enregistrement local doit toujours réussir immédiatement. Une panne
+    // Firestore ne bloque plus l'interface ni la génération des PDF.
     localStorage.setItem(getStorageKey(), JSON.stringify(nextState));
     dispatchRemoteSync(nextState);
     queueRemoteWorkspace(nextState);
@@ -5856,6 +6079,20 @@ async function removeTask(taskId) {
     state.tasks = state.tasks.filter((item) => item.id !== taskId);
     await saveLocal(state);
 }
+async function saveCalendarEvent(event) {
+    const state = loadLocal();
+    const index = state.calendarEvents.findIndex((item) => item.id === event.id);
+    if (index >= 0)
+        state.calendarEvents[index] = event;
+    else
+        state.calendarEvents.push(event);
+    await saveLocal(state);
+}
+async function removeCalendarEvent(eventId) {
+    const state = loadLocal();
+    state.calendarEvents = state.calendarEvents.filter((item) => item.id !== eventId);
+    await saveLocal(state);
+}
 async function uploadDocument(file, input) {
     const id = crypto.randomUUID();
     const sizeLabel = file.size > 1000000
@@ -5977,6 +6214,7 @@ const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const client_1 = require("react-dom/client");
 const App_1 = __importDefault(require("./App"));
+
 const cleanStart_1 = require("./lib/cleanStart");
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => void navigator.serviceWorker.register('./service-worker.js'));
@@ -5995,6 +6233,7 @@ void bootstrap();
 Object.defineProperty(exports, "__esModule", { value: true });
 
 }
+
 };
 const cache = Object.create(null);
 function normalize(value) {

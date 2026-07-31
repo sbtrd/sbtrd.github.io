@@ -2,7 +2,7 @@
   "id": "./",
   "name": "Maisons ARLOGIS - Pilotage chantier",
   "short_name": "ARLOGIS",
-  "description": "Pilotage des chantiers, artisans, tâches, documents et commandes.",
+  "description": "Pilotage des chantiers, rendez-vous, artisans, tâches, documents et commandes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
