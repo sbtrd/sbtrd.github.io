@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Maisons ARLOGIS - Pilotage chantier",
+  "short_name": "ARLOGIS",
+  "description": "Pilotage des chantiers, rendez-vous, artisans, tâches, documents et commandes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "lang": "fr-FR",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
