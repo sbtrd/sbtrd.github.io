@@ -40,6 +40,45 @@ const emptyProject = {
     startDate: today,
     targetEndDate: defaultEndDate,
 };
+function loadPlanningModels() {
+    try { const raw = localStorage.getItem('conducthome-planning-models'); return raw ? JSON.parse(raw) : []; }
+    catch { return []; }
+}
+function savePlanningModels(models) { localStorage.setItem('conducthome-planning-models', JSON.stringify(models)); }
+function addWorkingDays(start, days) {
+    const d = new Date(`${start || new Date().toISOString().slice(0,10)}T12:00:00`);
+    let remaining = Math.max(0, Number(days || 0));
+    while (remaining > 0) { d.setDate(d.getDate()+1); if (d.getDay() !== 0 && d.getDay() !== 6) remaining--; }
+    return d.toISOString().slice(0,10);
+}
+function buildProjectStagesFromModel(modelId, models, startDate) {
+    const model = (models || []).find((item) => item.id === modelId);
+    if (!model || !Array.isArray(model.stages) || !model.stages.length) return stages_1.STAGES.map((stage) => ({ stageId: stage.id, status: 'todo' }));
+    let cursor = startDate || new Date().toISOString().slice(0,10);
+    const byId = new Map(model.stages.map((item) => [item.stageId, item]));
+    return stages_1.STAGES.map((stage) => {
+        const config = byId.get(stage.id);
+        if (!config) return { stageId: stage.id, status: 'todo' };
+        const plannedDate = cursor;
+        cursor = addWorkingDays(cursor, config.durationDays || 0);
+        return { stageId: stage.id, status: 'todo', plannedDate, note: config.note || undefined, modelColor: config.color || undefined, modelDurationDays: Number(config.durationDays || 0) };
+    });
+}
+function ModelsView({ models, onChange }) {
+    const [selectedId, setSelectedId] = (0, react_1.useState)(models[0]?.id || '');
+    const selected = models.find((m) => m.id === selectedId);
+    const create = () => {
+        const model = { id: `m-${crypto.randomUUID()}`, name: 'Nouveau modèle', stages: stages_1.STAGES.map((stage, index) => ({ stageId: stage.id, order: index + 1, durationDays: 0, color: '#8b1d2c' })) };
+        const next = [...models, model]; onChange(next); setSelectedId(model.id);
+    };
+    const updateModel = (patch) => onChange(models.map((m) => m.id === selectedId ? { ...m, ...patch } : m));
+    const updateStage = (stageId, patch) => updateModel({ stages: selected.stages.map((item) => item.stageId === stageId ? { ...item, ...patch } : item) });
+    const remove = () => { const next=models.filter((m)=>m.id!==selectedId); onChange(next); setSelectedId(next[0]?.id||''); };
+    return (0, jsx_runtime_1.jsxs)("section", { className: "models-page", children: [
+        (0, jsx_runtime_1.jsxs)("header", { className: "models-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "AUTOMATISATION DU PLANNING" }), (0, jsx_runtime_1.jsx)("h1", { children: "Modèles de chantier" }), (0, jsx_runtime_1.jsx)("p", { children: "Tu définis toi-même l’ordre et la durée de chaque étape. Le modèle ne sert qu’à préremplir le planning à la création d’un chantier." })] }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: create, children: "+ Nouveau modèle" })] }),
+        (0, jsx_runtime_1.jsxs)("div", { className: "models-layout", children: [(0, jsx_runtime_1.jsxs)("aside", { className: "models-list panel", children: [models.map((model) => (0, jsx_runtime_1.jsx)("button", { className: `model-list-item ${model.id===selectedId?'active':''}`, onClick:()=>setSelectedId(model.id), children: model.name }, model.id)), !models.length && (0, jsx_runtime_1.jsx)("p", { children: "Crée ton premier modèle." })] }), selected && (0, jsx_runtime_1.jsxs)("main", { className: "model-editor panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "model-editor-top", children: [(0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Nom du modèle" }), (0, jsx_runtime_1.jsx)("input", { value: selected.name, onChange:(e)=>updateModel({name:e.target.value}), placeholder:"Ex. Maison plain-pied 100 m²" })] }), (0, jsx_runtime_1.jsx)("button", { className:"secondary-button", onClick:remove, children:"Supprimer le modèle" })] }), (0, jsx_runtime_1.jsxs)("div", { className:"model-steps-head", children:[(0, jsx_runtime_1.jsx)("span", {children:"Étape"}),(0, jsx_runtime_1.jsx)("span", {children:"Ordre"}),(0, jsx_runtime_1.jsx)("span", {children:"Durée (jours)"}),(0, jsx_runtime_1.jsx)("span", {children:"Couleur"})]}), selected.stages.slice().sort((a,b)=>a.order-b.order).map((item)=>{ const def=stages_1.STAGES.find((s)=>s.id===item.stageId); return (0, jsx_runtime_1.jsxs)("div", { className:"model-step-row", children:[(0, jsx_runtime_1.jsxs)("strong", {children:[(0, jsx_runtime_1.jsx)("i", {style:{background:item.color}}), def?.label || item.stageId]}),(0, jsx_runtime_1.jsx)("input", {type:"number", min:"1", value:item.order, onChange:(e)=>updateStage(item.stageId,{order:Number(e.target.value)})}),(0, jsx_runtime_1.jsx)("input", {type:"number", min:"0", value:item.durationDays, onChange:(e)=>updateStage(item.stageId,{durationDays:Number(e.target.value)})}),(0, jsx_runtime_1.jsx)("input", {type:"color", value:item.color||'#8b1d2c', onChange:(e)=>updateStage(item.stageId,{color:e.target.value})})] }, item.stageId); })] })] })] });
+}
+
 function App() {
     const [currentUser, setCurrentUser] = (0, react_1.useState)();
     const [authReady, setAuthReady] = (0, react_1.useState)(true);
@@ -2073,44 +2112,6 @@ exports.NAV_ITEMS = [
     { id: 'artisans', label: 'Artisans', icon: '' },
 ];
 
-function loadPlanningModels() {
-    try { const raw = localStorage.getItem('conducthome-planning-models'); return raw ? JSON.parse(raw) : []; }
-    catch { return []; }
-}
-function savePlanningModels(models) { localStorage.setItem('conducthome-planning-models', JSON.stringify(models)); }
-function addWorkingDays(start, days) {
-    const d = new Date(`${start || new Date().toISOString().slice(0,10)}T12:00:00`);
-    let remaining = Math.max(0, Number(days || 0));
-    while (remaining > 0) { d.setDate(d.getDate()+1); if (d.getDay() !== 0 && d.getDay() !== 6) remaining--; }
-    return d.toISOString().slice(0,10);
-}
-function buildProjectStagesFromModel(modelId, models, startDate) {
-    const model = (models || []).find((item) => item.id === modelId);
-    if (!model || !Array.isArray(model.stages) || !model.stages.length) return stages_1.STAGES.map((stage) => ({ stageId: stage.id, status: 'todo' }));
-    let cursor = startDate || new Date().toISOString().slice(0,10);
-    const byId = new Map(model.stages.map((item) => [item.stageId, item]));
-    return stages_1.STAGES.map((stage) => {
-        const config = byId.get(stage.id);
-        if (!config) return { stageId: stage.id, status: 'todo' };
-        const plannedDate = cursor;
-        cursor = addWorkingDays(cursor, config.durationDays || 0);
-        return { stageId: stage.id, status: 'todo', plannedDate, note: config.note || undefined, modelColor: config.color || undefined, modelDurationDays: Number(config.durationDays || 0) };
-    });
-}
-function ModelsView({ models, onChange }) {
-    const [selectedId, setSelectedId] = (0, react_1.useState)(models[0]?.id || '');
-    const selected = models.find((m) => m.id === selectedId);
-    const create = () => {
-        const model = { id: `m-${crypto.randomUUID()}`, name: 'Nouveau modèle', stages: stages_1.STAGES.map((stage, index) => ({ stageId: stage.id, order: index + 1, durationDays: 0, color: '#8b1d2c' })) };
-        const next = [...models, model]; onChange(next); setSelectedId(model.id);
-    };
-    const updateModel = (patch) => onChange(models.map((m) => m.id === selectedId ? { ...m, ...patch } : m));
-    const updateStage = (stageId, patch) => updateModel({ stages: selected.stages.map((item) => item.stageId === stageId ? { ...item, ...patch } : item) });
-    const remove = () => { const next=models.filter((m)=>m.id!==selectedId); onChange(next); setSelectedId(next[0]?.id||''); };
-    return (0, jsx_runtime_1.jsxs)("section", { className: "models-page", children: [
-        (0, jsx_runtime_1.jsxs)("header", { className: "models-header", children: [(0, jsx_runtime_1.jsxs)("div", { children: [(0, jsx_runtime_1.jsx)("span", { className: "eyebrow", children: "AUTOMATISATION DU PLANNING" }), (0, jsx_runtime_1.jsx)("h1", { children: "Modèles de chantier" }), (0, jsx_runtime_1.jsx)("p", { children: "Tu définis toi-même l’ordre et la durée de chaque étape. Le modèle ne sert qu’à préremplir le planning à la création d’un chantier." })] }), (0, jsx_runtime_1.jsx)("button", { className: "primary-button", onClick: create, children: "+ Nouveau modèle" })] }),
-        (0, jsx_runtime_1.jsxs)("div", { className: "models-layout", children: [(0, jsx_runtime_1.jsxs)("aside", { className: "models-list panel", children: [models.map((model) => (0, jsx_runtime_1.jsx)("button", { className: `model-list-item ${model.id===selectedId?'active':''}`, onClick:()=>setSelectedId(model.id), children: model.name }, model.id)), !models.length && (0, jsx_runtime_1.jsx)("p", { children: "Crée ton premier modèle." })] }), selected && (0, jsx_runtime_1.jsxs)("main", { className: "model-editor panel", children: [(0, jsx_runtime_1.jsxs)("div", { className: "model-editor-top", children: [(0, jsx_runtime_1.jsxs)("label", { children: [(0, jsx_runtime_1.jsx)("span", { children: "Nom du modèle" }), (0, jsx_runtime_1.jsx)("input", { value: selected.name, onChange:(e)=>updateModel({name:e.target.value}), placeholder:"Ex. Maison plain-pied 100 m²" })] }), (0, jsx_runtime_1.jsx)("button", { className:"secondary-button", onClick:remove, children:"Supprimer le modèle" })] }), (0, jsx_runtime_1.jsxs)("div", { className:"model-steps-head", children:[(0, jsx_runtime_1.jsx)("span", {children:"Étape"}),(0, jsx_runtime_1.jsx)("span", {children:"Ordre"}),(0, jsx_runtime_1.jsx)("span", {children:"Durée (jours)"}),(0, jsx_runtime_1.jsx)("span", {children:"Couleur"})]}), selected.stages.slice().sort((a,b)=>a.order-b.order).map((item)=>{ const def=stages_1.STAGES.find((s)=>s.id===item.stageId); return (0, jsx_runtime_1.jsxs)("div", { className:"model-step-row", children:[(0, jsx_runtime_1.jsxs)("strong", {children:[(0, jsx_runtime_1.jsx)("i", {style:{background:item.color}}), def?.label || item.stageId]}),(0, jsx_runtime_1.jsx)("input", {type:"number", min:"1", value:item.order, onChange:(e)=>updateStage(item.stageId,{order:Number(e.target.value)})}),(0, jsx_runtime_1.jsx)("input", {type:"number", min:"0", value:item.durationDays, onChange:(e)=>updateStage(item.stageId,{durationDays:Number(e.target.value)})}),(0, jsx_runtime_1.jsx)("input", {type:"color", value:item.color||'#8b1d2c', onChange:(e)=>updateStage(item.stageId,{color:e.target.value})})] }, item.stageId); })] })] })] });
-}
 function Sidebar({ active, onChange, notificationCount, taskCount }) {
     const [mobileMenuOpen, setMobileMenuOpen] = (0, react_1.useState)(false);
     const items = exports.NAV_ITEMS;
@@ -6257,7 +6258,7 @@ const App_1 = __importDefault(require("./App"));
 
 const cleanStart_1 = require("./lib/cleanStart");
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => void navigator.serviceWorker.register('./service-worker.js'));
+    window.addEventListener('load', () => { navigator.serviceWorker.getRegistrations().then((registrations) => Promise.all(registrations.map((registration) => registration.unregister()))).catch(() => undefined); });
 }
 async function bootstrap() {
     const resetting = await (0, cleanStart_1.performOneTimeBrowserReset)();
